@@ -1,0 +1,1808 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Game state
+let gameRunning = false;
+let gamePaused = false;
+let score = 0;
+let coins = 0;
+let highScore = localStorage.getItem('zombieRunnerHighScore') || 0;
+let gameSpeed = 5;
+let groundY = canvas.height - 80;
+let coinArray = [];
+
+// Ship state
+let ship = null;
+let inShip = false;
+let shipFuel = 100;
+const maxShipFuel = 100;
+
+// Rocket booster state
+let boosterFuel = 100;
+const maxBoosterFuel = 100;
+let boosterActive = false;
+
+// Laser eyes state
+let lasers = [];
+let laserCooldown = 0;
+const laserCooldownMax = 15; // frames between shots
+
+// X-Wing laser state
+let shipLasers = [];
+let shipLaserCooldown = 0;
+const shipLaserCooldownMax = 8; // faster fire rate for X-Wing
+let shipLaserCannon = 0; // cycles through 4 cannons
+
+// Player health
+let playerHealth = 100;
+const maxPlayerHealth = 100;
+let damageFlash = 0; // screen flash when hit
+
+// Hulk enemy state
+let hulks = [];
+let lastHulkSpawnTime = 0;
+
+// Lava fireball state
+let fireballs = [];
+let lastFireballTime = 0;
+
+// Screen shake state
+let screenShake = 0;
+let screenShakeIntensity = 0;
+
+// Controls
+const keys = {
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    shift: false,
+    shoot: false
+};
+
+// Music system
+let audioCtx = null;
+let musicPlaying = false;
+let musicInterval = null;
+
+document.getElementById('highScore').textContent = highScore;
+
+// Pixel art drawing helper
+function drawPixelRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
+}
+
+// Draw Luke Skywalker (X-Wing pilot)
+function drawZombie(x, y, frame) {
+    const bobOffset = Math.sin(frame * 0.3) * 2;
+
+    // === ROCKET BOOSTER on back ===
+    drawPixelRect(x - 2, y + 20 + bobOffset, 8, 16, '#555');
+    drawPixelRect(x - 1, y + 21 + bobOffset, 6, 14, '#666');
+    drawPixelRect(x, y + 23 + bobOffset, 4, 4, '#ff4400');
+    drawPixelRect(x - 3, y + 36 + bobOffset, 10, 4, '#444');
+
+    if (boosterActive && boosterFuel > 0) {
+        const flameLen = 10 + Math.random() * 15;
+        drawPixelRect(x - 2, y + 40 + bobOffset, 8, flameLen, '#ff6600');
+        drawPixelRect(x, y + 40 + bobOffset, 4, flameLen + 4, '#ffaa00');
+        drawPixelRect(x + 1, y + 40 + bobOffset, 2, flameLen + 8, '#ffff00');
+        if (frame % 3 === 0) {
+            drawPixelRect(x - 4 + Math.random() * 6, y + 40 + flameLen + bobOffset, 4, 4, 'rgba(150,150,150,0.5)');
+        }
+    }
+
+    // === X-WING PILOT HELMET ===
+    // Helmet base (white)
+    drawPixelRect(x + 5, y - 2 + bobOffset, 20, 20, '#e8e8e8');
+    // Helmet top curve
+    drawPixelRect(x + 7, y - 4 + bobOffset, 16, 4, '#e0e0e0');
+    // Helmet visor (dark)
+    drawPixelRect(x + 8, y + 5 + bobOffset, 14, 6, '#1a1a2e');
+    // Visor shine
+    drawPixelRect(x + 9, y + 6 + bobOffset, 4, 2, '#3344aa');
+    // Rebel Alliance symbol on helmet (red)
+    drawPixelRect(x + 13, y - 2 + bobOffset, 4, 3, '#cc3333');
+    drawPixelRect(x + 14, y + 1 + bobOffset, 2, 2, '#cc3333');
+    // Helmet chin strap
+    drawPixelRect(x + 8, y + 13 + bobOffset, 3, 3, '#888');
+    drawPixelRect(x + 19, y + 13 + bobOffset, 3, 3, '#888');
+    // Face (skin visible through visor opening)
+    drawPixelRect(x + 9, y + 8 + bobOffset, 12, 5, '#e8b88a');
+    // Eyes
+    drawPixelRect(x + 10, y + 9 + bobOffset, 2, 2, '#3366aa');
+    drawPixelRect(x + 18, y + 9 + bobOffset, 2, 2, '#3366aa');
+    // Mouth
+    drawPixelRect(x + 12, y + 12 + bobOffset, 6, 1, '#c49070');
+
+    // === LASER EYES glow ===
+    if (laserCooldown > 0) {
+        const glowAlpha = laserCooldown / laserCooldownMax;
+        ctx.fillStyle = `rgba(255, 0, 0, ${glowAlpha * 0.6})`;
+        ctx.fillRect(x + 9, y + 8 + bobOffset, 4, 4);
+        ctx.fillRect(x + 17, y + 8 + bobOffset, 4, 4);
+    }
+    if (laserCooldown === 0) {
+        const pulse = Math.sin(frame * 0.3) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(255, 50, 0, ${pulse * 0.4})`;
+        ctx.fillRect(x + 8, y + 7 + bobOffset, 6, 6);
+        ctx.fillRect(x + 16, y + 7 + bobOffset, 6, 6);
+        drawPixelRect(x + 10, y + 9 + bobOffset, 2, 2, '#ff2200');
+        drawPixelRect(x + 18, y + 9 + bobOffset, 2, 2, '#ff2200');
+    }
+
+    // === FLIGHT SUIT (orange Rebel pilot suit) ===
+    drawPixelRect(x + 6, y + 18 + bobOffset, 18, 21, '#e87530');
+    drawPixelRect(x + 9, y + 21 + bobOffset, 12, 15, '#d06628'); // Suit detail
+    // Chest box (life support)
+    drawPixelRect(x + 10, y + 20 + bobOffset, 10, 6, '#888');
+    drawPixelRect(x + 11, y + 21 + bobOffset, 3, 2, '#44aaff');
+    drawPixelRect(x + 16, y + 21 + bobOffset, 3, 2, '#ff4444');
+    // Belt
+    drawPixelRect(x + 6, y + 35 + bobOffset, 18, 3, '#eee');
+    drawPixelRect(x + 13, y + 35 + bobOffset, 4, 3, '#ccc');
+
+    // Arms (orange suit, animated)
+    const armSwing = Math.sin(frame * 0.2) * 8;
+    ctx.save();
+    ctx.translate(x + 3, y + 18 + bobOffset);
+    ctx.rotate(armSwing * 0.05 + 0.3);
+    drawPixelRect(0, 0, 6, 18, '#e87530');
+    drawPixelRect(0, 15, 6, 3, '#c49070'); // Hand
+    ctx.restore();
+    ctx.save();
+    ctx.translate(x + 21, y + 18 + bobOffset);
+    ctx.rotate(-armSwing * 0.05 - 0.1);
+    drawPixelRect(0, 0, 6, 18, '#e87530');
+    drawPixelRect(0, 15, 6, 3, '#c49070'); // Hand
+    ctx.restore();
+
+    // Legs (orange suit pants, animated)
+    const legSwing = Math.sin(frame * 0.3) * 5;
+    drawPixelRect(x + 6, y + 39 + bobOffset, 6, 15 + legSwing, '#d06628');
+    drawPixelRect(x + 15, y + 39 + bobOffset, 6, 15 - legSwing, '#d06628');
+    // Boots
+    drawPixelRect(x + 5, y + 51 + bobOffset + legSwing, 8, 4, '#333');
+    drawPixelRect(x + 14, y + 51 + bobOffset - legSwing, 8, 4, '#333');
+}
+
+// Draw laser beam (zombie eye laser - red)
+function drawLaser(laser) {
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 8;
+    drawPixelRect(laser.x, laser.y, laser.width, 3, '#ff0000');
+    drawPixelRect(laser.x, laser.y + 1, laser.width, 1, '#ff4444');
+    drawPixelRect(laser.x, laser.y + 1, laser.width, 1, '#ffaaaa');
+    ctx.shadowBlur = 0;
+    drawPixelRect(laser.x + laser.width - 4, laser.y - 1, 6, 5, 'rgba(255, 100, 100, 0.6)');
+}
+
+// Draw X-Wing laser bolt (green Star Wars style)
+function drawShipLaser(laser) {
+    ctx.shadowColor = '#00ff00';
+    ctx.shadowBlur = 10;
+    // Green bolt body
+    drawPixelRect(laser.x, laser.y, laser.width, 3, '#00ff44');
+    // Bright core
+    drawPixelRect(laser.x + 2, laser.y + 1, laser.width - 4, 1, '#aaffaa');
+    ctx.shadowBlur = 0;
+    // Leading tip glow
+    drawPixelRect(laser.x + laser.width - 3, laser.y - 1, 5, 5, 'rgba(100, 255, 100, 0.5)');
+}
+
+// Draw Minecraft-style Skeleton
+function drawSkeleton(x, y, frame) {
+    const bobOffset = Math.sin(frame * 0.25) * 2;
+
+    // Head (white/bone colored)
+    drawPixelRect(x + 6, y + bobOffset, 18, 18, '#e8e8e8');
+    drawPixelRect(x + 9, y + 3 + bobOffset, 3, 6, '#1a1a1a'); // Left eye socket
+    drawPixelRect(x + 18, y + 3 + bobOffset, 3, 6, '#1a1a1a'); // Right eye socket
+    drawPixelRect(x + 12, y + 9 + bobOffset, 6, 3, '#2a2a2a'); // Nose hole
+    drawPixelRect(x + 9, y + 12 + bobOffset, 12, 3, '#1a1a1a'); // Mouth
+
+    // Ribcage/body
+    drawPixelRect(x + 9, y + 18 + bobOffset, 12, 18, '#d8d8d8');
+    drawPixelRect(x + 12, y + 21 + bobOffset, 6, 3, '#333');
+    drawPixelRect(x + 12, y + 27 + bobOffset, 6, 3, '#333');
+    drawPixelRect(x + 12, y + 33 + bobOffset, 6, 3, '#333');
+
+    // Arms (holding bow)
+    const armAnim = Math.sin(frame * 0.15) * 3;
+    drawPixelRect(x - 3, y + 18 + bobOffset + armAnim, 6, 3, '#d8d8d8');
+    drawPixelRect(x - 3, y + 21 + bobOffset + armAnim, 3, 12, '#d8d8d8');
+    drawPixelRect(x + 27, y + 18 + bobOffset - armAnim, 6, 3, '#d8d8d8');
+    drawPixelRect(x + 30, y + 21 + bobOffset - armAnim, 3, 12, '#d8d8d8');
+
+    // Bow
+    drawPixelRect(x + 30, y + 15 + bobOffset, 3, 24, '#8B4513');
+    drawPixelRect(x + 33, y + 18 + bobOffset, 1, 18, '#aaa');
+
+    // Legs (bone)
+    const legSwing = Math.sin(frame * 0.3) * 4;
+    drawPixelRect(x + 9, y + 36 + bobOffset, 3, 18 + legSwing, '#d8d8d8');
+    drawPixelRect(x + 18, y + 36 + bobOffset, 3, 18 - legSwing, '#d8d8d8');
+}
+
+// Draw Enemy Skeleton (red eyes, more menacing)
+function drawEnemySkeleton(x, y, frame, facingLeft) {
+    const bobOffset = Math.sin(frame * 0.3) * 2;
+    const scale = facingLeft ? -1 : 1;
+
+    ctx.save();
+    if (facingLeft) {
+        ctx.translate(x + 30, 0);
+        ctx.scale(-1, 1);
+        x = 0;
+    }
+
+    // Head (slightly darker bone)
+    drawPixelRect(x + 6, y + bobOffset, 18, 18, '#d0d0d0');
+    // RED glowing eyes!
+    drawPixelRect(x + 9, y + 3 + bobOffset, 3, 6, '#ff0000');
+    drawPixelRect(x + 18, y + 3 + bobOffset, 3, 6, '#ff0000');
+    // Eye glow
+    drawPixelRect(x + 10, y + 4 + bobOffset, 1, 2, '#ff6666');
+    drawPixelRect(x + 19, y + 4 + bobOffset, 1, 2, '#ff6666');
+    drawPixelRect(x + 12, y + 9 + bobOffset, 6, 3, '#2a2a2a');
+    drawPixelRect(x + 9, y + 12 + bobOffset, 12, 3, '#1a1a1a');
+
+    // Ribcage
+    drawPixelRect(x + 9, y + 18 + bobOffset, 12, 18, '#c8c8c8');
+    drawPixelRect(x + 12, y + 21 + bobOffset, 6, 3, '#333');
+    drawPixelRect(x + 12, y + 27 + bobOffset, 6, 3, '#333');
+    drawPixelRect(x + 12, y + 33 + bobOffset, 6, 3, '#333');
+
+    // Arms (swinging aggressively)
+    const armAnim = Math.sin(frame * 0.25) * 6;
+    drawPixelRect(x - 3, y + 18 + bobOffset + armAnim, 6, 3, '#c8c8c8');
+    drawPixelRect(x - 3, y + 21 + bobOffset + armAnim, 3, 12, '#c8c8c8');
+    drawPixelRect(x + 27, y + 18 + bobOffset - armAnim, 6, 3, '#c8c8c8');
+    drawPixelRect(x + 27, y + 21 + bobOffset - armAnim, 3, 12, '#c8c8c8');
+
+    // Sword in hand!
+    drawPixelRect(x + 27, y + 10 + bobOffset - armAnim, 3, 15, '#888');
+    drawPixelRect(x + 28, y + 5 + bobOffset - armAnim, 2, 8, '#aaa');
+
+    // Legs (animated running)
+    const legSwing = Math.sin(frame * 0.35) * 6;
+    drawPixelRect(x + 9, y + 36 + bobOffset, 3, 18 + legSwing, '#c8c8c8');
+    drawPixelRect(x + 18, y + 36 + bobOffset, 3, 18 - legSwing, '#c8c8c8');
+
+    ctx.restore();
+}
+
+// Draw Minecraft-style gold coin
+function drawCoin(x, y, frame) {
+    const bobOffset = Math.sin(frame * 0.15) * 4;
+    const shimmer = Math.sin(frame * 0.2) * 20;
+
+    // Gold coin base
+    drawPixelRect(x + 4, y + bobOffset, 16, 20, '#FFD700');
+    drawPixelRect(x + 2, y + 2 + bobOffset, 20, 16, '#FFD700');
+
+    // Coin shine
+    drawPixelRect(x + 6, y + 4 + bobOffset, 4, 8, `rgb(${255}, ${235 + shimmer}, ${100})`);
+
+    // Coin edge (darker gold)
+    drawPixelRect(x + 2, y + 2 + bobOffset, 2, 16, '#DAA520');
+    drawPixelRect(x + 20, y + 2 + bobOffset, 2, 16, '#B8860B');
+
+    // Dollar/emerald symbol in center
+    drawPixelRect(x + 10, y + 6 + bobOffset, 4, 10, '#228B22');
+    drawPixelRect(x + 8, y + 8 + bobOffset, 2, 2, '#228B22');
+    drawPixelRect(x + 14, y + 12 + bobOffset, 2, 2, '#228B22');
+
+    // Sparkle effect
+    if (frame % 30 < 15) {
+        drawPixelRect(x - 2, y - 2 + bobOffset, 3, 3, '#FFFACD');
+        drawPixelRect(x + 22, y + 18 + bobOffset, 3, 3, '#FFFACD');
+    }
+}
+
+// Draw X-Wing starfighter
+function drawShip(x, y, frame, hasPlayer) {
+    const bobOffset = Math.sin(frame * 0.1) * 3;
+    const b = bobOffset; // shorthand
+
+    // Wing spread animation (wings open when flying)
+    const wingSpread = hasPlayer ? 18 : 12;
+
+    // === FOUR S-FOILS (wings in X formation) ===
+    // Top-left wing
+    drawPixelRect(x + 8, y - wingSpread + b, 40, 4, '#c8c8c8');
+    drawPixelRect(x + 8, y - wingSpread + b, 4, 4, '#aa3333'); // Wing stripe
+    drawPixelRect(x + 16, y - wingSpread + b, 4, 4, '#aa3333');
+    // Top-left laser cannon
+    drawPixelRect(x + 46, y - wingSpread - 1 + b, 18, 3, '#777');
+    drawPixelRect(x + 62, y - wingSpread - 2 + b, 4, 5, '#555');
+    // Cannon tip glow
+    if (hasPlayer && frame % 8 < 4) {
+        drawPixelRect(x + 65, y - wingSpread - 1 + b, 3, 3, '#ff3333');
+    }
+
+    // Bottom-left wing
+    drawPixelRect(x + 8, y + wingSpread + 22 + b, 40, 4, '#c8c8c8');
+    drawPixelRect(x + 8, y + wingSpread + 22 + b, 4, 4, '#aa3333');
+    drawPixelRect(x + 16, y + wingSpread + 22 + b, 4, 4, '#aa3333');
+    // Bottom-left laser cannon
+    drawPixelRect(x + 46, y + wingSpread + 23 + b, 18, 3, '#777');
+    drawPixelRect(x + 62, y + wingSpread + 22 + b, 4, 5, '#555');
+    if (hasPlayer && frame % 8 < 4) {
+        drawPixelRect(x + 65, y + wingSpread + 23 + b, 3, 3, '#ff3333');
+    }
+
+    // Top-right wing (slightly higher for X shape)
+    drawPixelRect(x + 8, y - wingSpread + 6 + b, 40, 4, '#b8b8b8');
+    drawPixelRect(x + 8, y - wingSpread + 6 + b, 4, 4, '#aa3333');
+    drawPixelRect(x + 16, y - wingSpread + 6 + b, 4, 4, '#aa3333');
+
+    // Bottom-right wing
+    drawPixelRect(x + 8, y + wingSpread + 16 + b, 40, 4, '#b8b8b8');
+    drawPixelRect(x + 8, y + wingSpread + 16 + b, 4, 4, '#aa3333');
+    drawPixelRect(x + 16, y + wingSpread + 16 + b, 4, 4, '#aa3333');
+
+    // Wing struts connecting to fuselage
+    drawPixelRect(x + 12, y + 4 + b, 4, wingSpread - 4, '#999');
+    drawPixelRect(x + 12, y + 22 + b, 4, wingSpread - 4, '#999');
+
+    // === MAIN FUSELAGE (long nose) ===
+    // Rear fuselage
+    drawPixelRect(x, y + 8 + b, 20, 12, '#d0d0d0');
+    drawPixelRect(x + 2, y + 9 + b, 16, 10, '#bbb');
+
+    // Mid fuselage
+    drawPixelRect(x + 18, y + 6 + b, 30, 16, '#ddd');
+    drawPixelRect(x + 20, y + 7 + b, 26, 14, '#ccc');
+
+    // Nose (long pointed X-Wing nose)
+    drawPixelRect(x + 46, y + 8 + b, 18, 12, '#e0e0e0');
+    drawPixelRect(x + 62, y + 10 + b, 10, 8, '#d8d8d8');
+    drawPixelRect(x + 70, y + 11 + b, 6, 6, '#ccc');
+    drawPixelRect(x + 74, y + 12 + b, 4, 4, '#bbb');
+
+    // === COCKPIT (round glass canopy) ===
+    drawPixelRect(x + 28, y + 4 + b, 16, 4, '#444'); // Canopy frame
+    drawPixelRect(x + 30, y + 5 + b, 12, 2, '#00aaff'); // Glass top
+    drawPixelRect(x + 26, y + 8 + b, 20, 10, '#444'); // Canopy frame
+    drawPixelRect(x + 28, y + 9 + b, 16, 8, '#0088dd'); // Glass main
+    drawPixelRect(x + 30, y + 10 + b, 6, 4, '#00bbff'); // Glass shine
+
+    // === ENGINE EXHAUSTS (4 engines at rear) ===
+    const glowIntensity = Math.sin(frame * 0.3) * 30 + 200;
+    // Top engines
+    drawPixelRect(x - 2, y + 8 + b, 6, 4, '#666');
+    drawPixelRect(x - 2, y + 16 + b, 6, 4, '#666');
+    // Engine glow circles
+    drawPixelRect(x - 4, y + 9 + b, 4, 2, `rgb(${glowIntensity}, ${glowIntensity * 0.4}, ${glowIntensity * 0.1})`);
+    drawPixelRect(x - 4, y + 17 + b, 4, 2, `rgb(${glowIntensity}, ${glowIntensity * 0.4}, ${glowIntensity * 0.1})`);
+
+    // Flames when flying
+    if (hasPlayer) {
+        const fl = 12 + Math.random() * 18;
+        // Top engine flame
+        drawPixelRect(x - 4 - fl, y + 8 + b, fl, 4, '#ff4400');
+        drawPixelRect(x - 4 - fl + 4, y + 9 + b, fl - 4, 2, '#ffaa00');
+        drawPixelRect(x - 4 - fl + 8, y + 9 + b, fl - 12, 2, '#ffff66');
+        // Bottom engine flame
+        const fl2 = 10 + Math.random() * 16;
+        drawPixelRect(x - 4 - fl2, y + 16 + b, fl2, 4, '#ff4400');
+        drawPixelRect(x - 4 - fl2 + 4, y + 17 + b, fl2 - 4, 2, '#ffaa00');
+        drawPixelRect(x - 4 - fl2 + 8, y + 17 + b, fl2 - 12, 2, '#ffff66');
+    }
+
+    // === R2-D2 ASTROMECH DROID (behind cockpit) ===
+    drawPixelRect(x + 20, y + 4 + b, 6, 8, '#e8e8e8'); // R2 body
+    drawPixelRect(x + 21, y + 3 + b, 4, 3, '#4488cc'); // R2 dome
+    drawPixelRect(x + 22, y + 4 + b, 1, 1, '#ff0000'); // R2 eye
+    drawPixelRect(x + 20, y + 6 + b, 6, 2, '#4488cc'); // R2 blue stripe
+
+    // Draw zombie pilot if has player
+    if (hasPlayer) {
+        // Mini Luke pilot in cockpit
+        drawPixelRect(x + 31, y + 7 + b, 10, 4, '#e0e0e0'); // Helmet
+        drawPixelRect(x + 32, y + 9 + b, 8, 6, '#e8b88a'); // Face
+        drawPixelRect(x + 33, y + 10 + b, 2, 2, '#3366aa'); // Eyes
+        drawPixelRect(x + 37, y + 10 + b, 2, 2, '#3366aa');
+    }
+}
+
+// Draw pickup ship (floating, waiting to be entered)
+function drawPickupShip(x, y, frame) {
+    const bobOffset = Math.sin(frame * 0.08) * 8;
+
+    // Glow effect
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 20;
+    drawShip(x, y + bobOffset, frame, false);
+    ctx.shadowBlur = 0;
+
+    // "ENTER" indicator
+    if (frame % 60 < 40) {
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '12px Courier New';
+        ctx.fillText('PRESS E', x + 15, y - 10 + bobOffset);
+    }
+}
+
+// ===== MUSIC SYSTEM =====
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playNote(frequency, duration, time, type = 'square') {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, time);
+
+    gainNode.gain.setValueAtTime(0.15, time);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start(time);
+    oscillator.stop(time + duration);
+}
+
+// Chicken Wing inspired melody (fun, bouncy tune)
+function playChickenWingMelody() {
+    if (!audioCtx) initAudio();
+
+    const tempo = 0.18;
+    const now = audioCtx.currentTime;
+
+    // Main melody - catchy and bouncy
+    const melody = [
+        392, 392, 440, 392, 0, 330, 330, // "Chic-ken wing"
+        294, 330, 392, 392, 440, 392, 0, // "chic-ken wing"
+        523, 494, 440, 392, 440, 494, 523, // "hot dog and ba-lo"
+        494, 440, 392, 330, 294, 330, 392, // "gna, chic-ken and"
+        440, 440, 392, 330, 392, 440, 0, // "ma-ca-ro-ni"
+        392, 440, 523, 494, 440, 392, 330, // "chil-lin with my"
+        294, 330, 392, 440, 392, 330, 294, // "ho-mies"
+        330, 392, 440, 392, 330, 294, 262 // ending
+    ];
+
+    melody.forEach((freq, i) => {
+        if (freq > 0) {
+            playNote(freq, tempo * 0.9, now + i * tempo, 'square');
+            // Add harmony
+            if (i % 4 === 0) {
+                playNote(freq / 2, tempo * 0.9, now + i * tempo, 'triangle');
+            }
+        }
+    });
+
+    // Bass line
+    const bass = [131, 147, 165, 147, 131, 147, 165, 175];
+    bass.forEach((freq, i) => {
+        playNote(freq, tempo * 7, now + i * tempo * 7, 'triangle');
+    });
+
+    // Drums (noise-like percussion using very short square waves)
+    for (let i = 0; i < melody.length; i++) {
+        if (i % 2 === 0) {
+            playNote(100, 0.05, now + i * tempo, 'square');
+        }
+        if (i % 4 === 0) {
+            playNote(60, 0.1, now + i * tempo, 'triangle');
+        }
+    }
+}
+
+function toggleMusic() {
+    initAudio();
+    musicPlaying = !musicPlaying;
+    document.getElementById('musicBtn').textContent = musicPlaying ? 'Music: ON' : 'Music: OFF';
+
+    if (musicPlaying) {
+        playChickenWingMelody();
+        musicInterval = setInterval(() => {
+            if (musicPlaying && gameRunning) {
+                playChickenWingMelody();
+            }
+        }, 10000);
+    } else {
+        if (musicInterval) {
+            clearInterval(musicInterval);
+            musicInterval = null;
+        }
+    }
+}
+
+// Draw block obstacle
+function drawBlock(x, y, type) {
+    const size = 40;
+    if (type === 'stone') {
+        drawPixelRect(x, y, size, size, '#888888');
+        drawPixelRect(x + 5, y + 5, 10, 10, '#666666');
+        drawPixelRect(x + 25, y + 20, 10, 15, '#666666');
+        drawPixelRect(x + 8, y + 28, 8, 8, '#777777');
+        // Border
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, size, size);
+    } else if (type === 'cobblestone') {
+        drawPixelRect(x, y, size, size, '#7a7a7a');
+        drawPixelRect(x + 2, y + 2, 15, 12, '#666');
+        drawPixelRect(x + 20, y + 5, 17, 15, '#888');
+        drawPixelRect(x + 5, y + 18, 18, 10, '#777');
+        drawPixelRect(x + 25, y + 25, 12, 12, '#666');
+        drawPixelRect(x + 2, y + 30, 10, 8, '#888');
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, size, size);
+    } else if (type === 'obsidian') {
+        drawPixelRect(x, y, size, size, '#1a0a2e');
+        drawPixelRect(x + 5, y + 5, 8, 8, '#2a1a4e');
+        drawPixelRect(x + 20, y + 15, 12, 12, '#3a2a5e');
+        drawPixelRect(x + 8, y + 25, 15, 10, '#2a1a4e');
+        ctx.strokeStyle = '#0a0a1e';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, size, size);
+    }
+}
+
+// Draw lava
+function drawLava(x, width, frame) {
+    const lavaY = groundY + 40;
+    const height = 40;
+
+    // Lava base
+    drawPixelRect(x, lavaY, width, height, '#ff4400');
+
+    // Animated lava bubbles
+    for (let i = 0; i < width; i += 20) {
+        const bubbleOffset = Math.sin((frame + i) * 0.1) * 5;
+        drawPixelRect(x + i + 5, lavaY + 10 + bubbleOffset, 10, 10, '#ff6600');
+        drawPixelRect(x + i + 8, lavaY + 5 + bubbleOffset, 4, 4, '#ffaa00');
+    }
+
+    // Surface glow
+    for (let i = 0; i < width; i += 15) {
+        const waveOffset = Math.sin((frame + i) * 0.15) * 3;
+        drawPixelRect(x + i, lavaY + waveOffset, 12, 5, '#ffaa00');
+    }
+}
+
+// Draw fireball
+function drawFireball(fb) {
+    const flicker = Math.sin(fb.frame * 0.5) * 2;
+    // Outer glow
+    ctx.shadowColor = '#ff4400';
+    ctx.shadowBlur = 12;
+    // Fireball body
+    drawPixelRect(fb.x + 2, fb.y + 2, 12, 12, '#ff6600');
+    drawPixelRect(fb.x + 4, fb.y + 4, 8, 8, '#ffaa00');
+    drawPixelRect(fb.x + 5, fb.y + 5, 6, 6, '#ffdd44');
+    // Core
+    drawPixelRect(fb.x + 6, fb.y + 6, 4, 4, '#ffffaa');
+    ctx.shadowBlur = 0;
+    // Trail particles
+    const tx = fb.x - fb.velocityX * 2;
+    const ty = fb.y - fb.velocityY * 2;
+    drawPixelRect(tx + 4 + flicker, ty + 4, 6, 6, 'rgba(255, 100, 0, 0.6)');
+    drawPixelRect(tx + 6, ty + 6 + flicker, 4, 4, 'rgba(255, 170, 0, 0.4)');
+}
+
+// Draw Hulk giant enemy
+function drawHulk(x, y, frame, hulk) {
+    const bobOffset = Math.sin(frame * 0.15) * 3;
+    const scale = hulk.facingLeft ? -1 : 1;
+
+    ctx.save();
+    if (hulk.facingLeft) {
+        ctx.translate(x + hulk.width, 0);
+        ctx.scale(-1, 1);
+        x = 0;
+    }
+
+    // Smash animation
+    const smashing = hulk.smashTimer > 0;
+    const smashOffset = smashing ? Math.sin(hulk.smashTimer * 0.5) * 8 : 0;
+
+    // === LEGS (huge, green) ===
+    const legSwing = Math.sin(frame * 0.2) * 8;
+    drawPixelRect(x + 10, y + 85 + bobOffset, 20, 35 + legSwing, '#2d6b1e');
+    drawPixelRect(x + 45, y + 85 + bobOffset, 20, 35 - legSwing, '#2d6b1e');
+    // Torn purple pants
+    drawPixelRect(x + 8, y + 75 + bobOffset, 24, 18, '#5b2e8a');
+    drawPixelRect(x + 43, y + 75 + bobOffset, 24, 18, '#5b2e8a');
+    // Torn edges
+    drawPixelRect(x + 8, y + 90 + bobOffset, 6, 4, '#5b2e8a');
+    drawPixelRect(x + 26, y + 88 + bobOffset, 5, 5, '#5b2e8a');
+    drawPixelRect(x + 43, y + 91 + bobOffset, 7, 3, '#5b2e8a');
+    drawPixelRect(x + 61, y + 89 + bobOffset, 6, 4, '#5b2e8a');
+    // Feet
+    drawPixelRect(x + 6, y + 118 + bobOffset + legSwing, 26, 8, '#2d6b1e');
+    drawPixelRect(x + 42, y + 118 + bobOffset - legSwing, 26, 8, '#2d6b1e');
+
+    // === MASSIVE TORSO ===
+    drawPixelRect(x + 5, y + 30 + bobOffset, 65, 48, '#3a8a28');
+    drawPixelRect(x + 10, y + 32 + bobOffset, 55, 44, '#34802a');
+    // Chest muscles
+    drawPixelRect(x + 15, y + 35 + bobOffset, 18, 15, '#3a9030');
+    drawPixelRect(x + 40, y + 35 + bobOffset, 18, 15, '#3a9030');
+    // Abs
+    drawPixelRect(x + 22, y + 55 + bobOffset, 12, 6, '#3a9030');
+    drawPixelRect(x + 40, y + 55 + bobOffset, 12, 6, '#3a9030');
+    drawPixelRect(x + 22, y + 63 + bobOffset, 12, 6, '#3a9030');
+    drawPixelRect(x + 40, y + 63 + bobOffset, 12, 6, '#3a9030');
+
+    // === ARMS (massive, with fists) ===
+    const armRaise = smashing ? -30 + smashOffset : Math.sin(frame * 0.15) * 6;
+    // Left arm
+    drawPixelRect(x - 12, y + 32 + bobOffset + armRaise, 20, 50, '#3a8a28');
+    drawPixelRect(x - 14, y + 30 + bobOffset + armRaise, 18, 12, '#34802a');
+    // Left fist
+    drawPixelRect(x - 16, y + 78 + bobOffset + armRaise, 22, 18, '#2d6b1e');
+    drawPixelRect(x - 14, y + 80 + bobOffset + armRaise, 18, 14, '#3a8a28');
+    // Right arm
+    drawPixelRect(x + 65, y + 32 + bobOffset - armRaise, 20, 50, '#3a8a28');
+    drawPixelRect(x + 69, y + 30 + bobOffset - armRaise, 18, 12, '#34802a');
+    // Right fist
+    drawPixelRect(x + 67, y + 78 + bobOffset - armRaise, 22, 18, '#2d6b1e');
+    drawPixelRect(x + 69, y + 80 + bobOffset - armRaise, 18, 14, '#3a8a28');
+
+    // === HEAD ===
+    drawPixelRect(x + 15, y + 2 + bobOffset, 44, 32, '#3a8a28');
+    drawPixelRect(x + 18, y + bobOffset, 38, 30, '#34802a');
+    // Angry brow ridge
+    drawPixelRect(x + 16, y + 8 + bobOffset, 16, 5, '#2d6b1e');
+    drawPixelRect(x + 42, y + 8 + bobOffset, 16, 5, '#2d6b1e');
+    // Eyes (angry, white with dark pupils)
+    drawPixelRect(x + 20, y + 12 + bobOffset, 10, 7, '#ffffff');
+    drawPixelRect(x + 44, y + 12 + bobOffset, 10, 7, '#ffffff');
+    drawPixelRect(x + 24, y + 13 + bobOffset, 5, 5, '#1a1a1a');
+    drawPixelRect(x + 48, y + 13 + bobOffset, 5, 5, '#1a1a1a');
+    // Angry red eye glow
+    drawPixelRect(x + 25, y + 14 + bobOffset, 2, 2, '#ff3300');
+    drawPixelRect(x + 49, y + 14 + bobOffset, 2, 2, '#ff3300');
+    // Nose
+    drawPixelRect(x + 33, y + 17 + bobOffset, 8, 6, '#2d6b1e');
+    // Mouth (angry grimace)
+    drawPixelRect(x + 22, y + 25 + bobOffset, 30, 5, '#1a1a1a');
+    drawPixelRect(x + 24, y + 25 + bobOffset, 4, 3, '#ffffff');
+    drawPixelRect(x + 46, y + 25 + bobOffset, 4, 3, '#ffffff');
+    // Black hair
+    drawPixelRect(x + 17, y - 2 + bobOffset, 40, 6, '#1a2a1a');
+    drawPixelRect(x + 15, y + bobOffset, 8, 8, '#1a2a1a');
+    drawPixelRect(x + 51, y + bobOffset, 8, 8, '#1a2a1a');
+
+    // === SMASH EFFECT ===
+    if (smashing && hulk.smashTimer < 10) {
+        // Ground impact shockwave
+        ctx.fillStyle = 'rgba(255, 200, 0, 0.4)';
+        ctx.fillRect(x - 20, y + 120, hulk.width + 40, 8);
+        ctx.fillStyle = 'rgba(255, 100, 0, 0.3)';
+        ctx.fillRect(x - 30, y + 115, hulk.width + 60, 6);
+    }
+
+    // "HULK SMASH" text when smashing
+    if (smashing && hulk.smashTimer > 15) {
+        ctx.fillStyle = '#44ff44';
+        ctx.font = 'bold 14px Courier New';
+        ctx.fillText('HULK SMASH!', x + 5, y - 10 + bobOffset);
+    }
+
+    ctx.restore();
+}
+
+function spawnHulk() {
+    if (hulks.length >= 2) return; // Max 2 hulks at once
+
+    const hulk = {
+        x: canvas.width + 60,
+        y: groundY - 126, // Hulk is 126px tall
+        width: 75,
+        height: 126,
+        frame: Math.random() * 100,
+        velocityX: -(1.5 + Math.random() * 1.5),
+        velocityY: 0,
+        jumping: false,
+        jumpTimer: 60 + Math.random() * 120,
+        smashTimer: 0,
+        smashCooldown: 0,
+        lifespan: 600, // 10 seconds at 60fps
+        facingLeft: true
+    };
+    hulks.push(hulk);
+}
+
+// Player (Zombie)
+const player = {
+    x: 150,
+    y: groundY - 54,
+    width: 30,
+    height: 54,
+    velocityY: 0,
+    jumping: false,
+    jumpCount: 0,
+    maxJumps: 2,
+    frame: 0
+};
+
+// Skeleton (chaser) with dynamic movement
+const skeleton = {
+    x: 30,
+    y: groundY - 54,
+    baseX: 30,
+    baseY: groundY - 54,
+    width: 36,
+    height: 54,
+    frame: 0,
+    velocityY: 0,
+    jumping: false,
+    lungeTimer: 0,
+    lungeSpeed: 0,
+    bobPhase: 0,
+    strafeDir: 1
+};
+
+// Obstacles and lava pits
+let obstacles = [];
+let lavaPits = [];
+let enemySkeletons = [];
+
+function spawnObstacle() {
+    const types = ['stone', 'cobblestone', 'obsidian'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const stackHeight = Math.floor(Math.random() * 2) + 1;
+
+    for (let i = 0; i < stackHeight; i++) {
+        obstacles.push({
+            x: canvas.width + 50,
+            y: groundY - 40 * (i + 1),
+            width: 40,
+            height: 40,
+            type: type
+        });
+    }
+}
+
+function spawnLavaPit() {
+    const width = 60 + Math.random() * 60;
+    lavaPits.push({
+        x: canvas.width + 50,
+        width: width,
+        hasGap: true
+    });
+}
+
+function spawnCoin() {
+    // Spawn coins at different heights - some in the air for jumping
+    const heights = [
+        groundY - 80,   // Low (easy)
+        groundY - 130,  // Medium (need to jump)
+        groundY - 180,  // High (need good timing)
+        groundY - 220   // Very high (double jump)
+    ];
+    const y = heights[Math.floor(Math.random() * heights.length)];
+
+    coinArray.push({
+        x: canvas.width + 50,
+        y: y,
+        width: 24,
+        height: 24,
+        collected: false
+    });
+}
+
+function spawnEnemySkeleton() {
+    // Only spawn if we have less than 5 enemy skeletons on screen
+    if (enemySkeletons.length >= 5) return;
+
+    const enemySkeleton = {
+        x: canvas.width + 50 + Math.random() * 100,
+        y: groundY - 54,
+        baseY: groundY - 54,
+        width: 30,
+        height: 54,
+        frame: Math.random() * 100,
+        velocityX: -(2 + Math.random() * 3), // Moving left (towards player)
+        velocityY: 0,
+        jumping: false,
+        jumpTimer: Math.random() * 60,
+        directionTimer: 60 + Math.random() * 120,
+        behavior: Math.random() < 0.5 ? 'runner' : 'jumper'
+    };
+    enemySkeletons.push(enemySkeleton);
+}
+
+function spawnShip() {
+    // Only spawn if no ship exists and not currently in a ship
+    if (ship || inShip) return;
+
+    ship = {
+        x: canvas.width + 50,
+        y: groundY - 150 - Math.random() * 100,
+        width: 70,
+        height: 50,
+        frame: 0
+    };
+}
+
+// Ground blocks
+function drawGround(frame) {
+    const blockSize = 40;
+
+    // Grass layer
+    for (let x = 0; x < canvas.width; x += blockSize) {
+        // Check if there's a lava pit here
+        let isLava = false;
+        for (let pit of lavaPits) {
+            if (x + blockSize > pit.x && x < pit.x + pit.width) {
+                isLava = true;
+                break;
+            }
+        }
+
+        if (!isLava) {
+            // Grass block top
+            drawPixelRect(x, groundY, blockSize, 10, '#5a8f3a');
+            drawPixelRect(x + 5, groundY, 5, 5, '#4a7f2a');
+            drawPixelRect(x + 20, groundY + 2, 8, 5, '#6a9f4a');
+
+            // Dirt below
+            drawPixelRect(x, groundY + 10, blockSize, 30, '#8B5A2B');
+            drawPixelRect(x + 5, groundY + 15, 8, 8, '#7a4a1b');
+            drawPixelRect(x + 25, groundY + 20, 10, 10, '#9b6a3b');
+
+            // Block border
+            ctx.strokeStyle = '#3a3a3a';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, groundY, blockSize, blockSize);
+        }
+    }
+}
+
+// Background
+function drawBackground() {
+    // Sky gradient (nether-ish)
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#1a0a0a');
+    gradient.addColorStop(0.5, '#2a1515');
+    gradient.addColorStop(1, '#3a2020');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Background blocks (netherrack style)
+    for (let x = 0; x < canvas.width; x += 60) {
+        for (let y = 0; y < groundY - 100; y += 60) {
+            ctx.fillStyle = `rgba(80, 30, 30, ${0.1 + Math.random() * 0.1})`;
+            ctx.fillRect(x, y, 50, 50);
+        }
+    }
+}
+
+// Collision detection
+function checkCollision(rect1, rect2) {
+    return rect1.x < rect2.x + rect2.width &&
+           rect1.x + rect1.width > rect2.x &&
+           rect1.y < rect2.y + rect2.height &&
+           rect1.y + rect1.height > rect2.y;
+}
+
+function checkLavaCollision() {
+    for (let pit of lavaPits) {
+        if (player.x + player.width > pit.x &&
+            player.x < pit.x + pit.width &&
+            player.y + player.height >= groundY) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function checkSkeletonCatch() {
+    return skeleton.x + skeleton.width >= player.x;
+}
+
+// Jump
+function jump() {
+    if (player.jumpCount < player.maxJumps) {
+        player.velocityY = -15;
+        player.jumping = true;
+        player.jumpCount++;
+    }
+}
+
+// Game loop
+let lastSpawnTime = 0;
+let lastCoinSpawnTime = 0;
+let lastEnemySkeletonSpawnTime = 0;
+let lastShipSpawnTime = 0;
+let frameCount = 0;
+
+function gameLoop(timestamp) {
+    if (!gameRunning) return;
+
+    if (gamePaused) {
+        // Draw pause overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 40px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2 - 20);
+        ctx.font = '18px Courier New';
+        ctx.fillText('Press P or ESC to resume', canvas.width / 2, canvas.height / 2 + 20);
+        ctx.textAlign = 'left';
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    frameCount++;
+
+    // Screen shake
+    ctx.save();
+    if (screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * screenShakeIntensity;
+        const shakeY = (Math.random() - 0.5) * screenShakeIntensity;
+        ctx.translate(shakeX, shakeY);
+        screenShake--;
+        screenShakeIntensity *= 0.9;
+    }
+
+    // Clear and draw background
+    drawBackground();
+
+    // Update game speed
+    gameSpeed = 5 + Math.floor(score / 500) * 0.5;
+    if (gameSpeed > 12) gameSpeed = 12;
+
+    // Spawn obstacles
+    if (timestamp - lastSpawnTime > 1500 - Math.min(score, 800)) {
+        if (Math.random() < 0.6) {
+            spawnObstacle();
+        } else {
+            spawnLavaPit();
+        }
+        lastSpawnTime = timestamp;
+    }
+
+    // Spawn coins more frequently
+    if (timestamp - lastCoinSpawnTime > 800) {
+        spawnCoin();
+        lastCoinSpawnTime = timestamp;
+    }
+
+    // Spawn enemy skeletons
+    if (timestamp - lastEnemySkeletonSpawnTime > 2000 && enemySkeletons.length < 5) {
+        spawnEnemySkeleton();
+        lastEnemySkeletonSpawnTime = timestamp;
+    }
+
+    // Spawn ship occasionally (first one at 5 seconds, then every 15-25 seconds)
+    const shipSpawnDelay = lastShipSpawnTime === 0 ? 5000 : 15000 + Math.random() * 10000;
+    if (timestamp - lastShipSpawnTime > shipSpawnDelay && !ship && !inShip) {
+        spawnShip();
+        lastShipSpawnTime = timestamp;
+    }
+
+    // Spawn Hulk (only after score 1000, every 12-20 seconds)
+    if (score > 1000 && timestamp - lastHulkSpawnTime > 12000 + Math.random() * 8000 && hulks.length < 2) {
+        spawnHulk();
+        lastHulkSpawnTime = timestamp;
+    }
+
+    // Update and draw lava pits
+    for (let i = lavaPits.length - 1; i >= 0; i--) {
+        lavaPits[i].x -= gameSpeed;
+        drawLava(lavaPits[i].x, lavaPits[i].width, frameCount);
+
+        // Lava shoots fireballs!
+        if (frameCount % 90 === 0 && lavaPits[i].x > 0 && lavaPits[i].x < canvas.width) {
+            const spawnX = lavaPits[i].x + Math.random() * lavaPits[i].width;
+            fireballs.push({
+                x: spawnX,
+                y: groundY + 30,
+                width: 16,
+                height: 16,
+                velocityX: -1 + Math.random() * 2,
+                velocityY: -(8 + Math.random() * 6),
+                frame: 0
+            });
+        }
+
+        if (lavaPits[i].x + lavaPits[i].width < 0) {
+            lavaPits.splice(i, 1);
+        }
+    }
+
+    // Update and draw fireballs
+    for (let i = fireballs.length - 1; i >= 0; i--) {
+        const fb = fireballs[i];
+        fb.frame++;
+        fb.velocityY += 0.3; // Gravity (slower than player)
+        fb.x += fb.velocityX;
+        fb.y += fb.velocityY;
+        drawFireball(fb);
+
+        // Remove if off screen or below ground
+        if (fb.y > groundY + 40 || fb.x < -20 || fb.x > canvas.width + 20) {
+            fireballs.splice(i, 1);
+            continue;
+        }
+
+        // Fireball hits player
+        if (!inShip && checkCollision(fb, player)) {
+            playerHealth -= 10;
+            damageFlash = 15;
+            fireballs.splice(i, 1);
+            if (playerHealth <= 0) {
+                endGame();
+                return;
+            }
+            continue;
+        }
+
+        // Fireball hits ship (less damage)
+        if (inShip && checkCollision(fb, player)) {
+            shipFuel -= 8;
+            fireballs.splice(i, 1);
+        }
+    }
+
+    // Draw ground
+    drawGround(frameCount);
+
+    // Update and draw obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].x -= gameSpeed;
+        drawBlock(obstacles[i].x, obstacles[i].y, obstacles[i].type);
+
+        if (obstacles[i].x + obstacles[i].width < 0) {
+            obstacles.splice(i, 1);
+            score += 10;
+        }
+    }
+
+    // Update and draw coins
+    for (let i = coinArray.length - 1; i >= 0; i--) {
+        coinArray[i].x -= gameSpeed;
+        drawCoin(coinArray[i].x, coinArray[i].y, frameCount);
+
+        // Check coin collection
+        if (checkCollision(player, coinArray[i])) {
+            coins += 1;
+            score += 50;
+            document.getElementById('coins').textContent = coins;
+            coinArray.splice(i, 1);
+            continue;
+        }
+
+        if (coinArray[i].x + coinArray[i].width < 0) {
+            coinArray.splice(i, 1);
+        }
+    }
+
+    // Update and draw ship (if exists and not in ship)
+    if (ship && !inShip) {
+        ship.x -= gameSpeed * 0.5;
+        ship.frame++;
+        drawPickupShip(ship.x, ship.y, ship.frame);
+
+        // Check if player can enter ship
+        const shipHitbox = { x: ship.x, y: ship.y, width: ship.width, height: ship.height };
+        if (checkCollision(player, shipHitbox)) {
+            // Show enter prompt is handled in drawPickupShip
+        }
+
+        // Remove ship if off screen
+        if (ship.x + ship.width < -50) {
+            ship = null;
+        }
+    }
+
+    // Update and draw enemy skeletons
+    for (let i = enemySkeletons.length - 1; i >= 0; i--) {
+        const enemy = enemySkeletons[i];
+        enemy.frame++;
+
+        // Update direction timer
+        enemy.directionTimer--;
+        if (enemy.directionTimer <= 0) {
+            // Change behavior randomly
+            if (Math.random() < 0.4) {
+                // Reverse direction briefly
+                enemy.velocityX = -enemy.velocityX * 0.5;
+            } else {
+                // Speed up or slow down
+                enemy.velocityX = -(2 + Math.random() * 4);
+            }
+            enemy.directionTimer = 40 + Math.random() * 80;
+        }
+
+        // Jumping behavior
+        enemy.jumpTimer--;
+        if (enemy.jumpTimer <= 0 && !enemy.jumping) {
+            if (enemy.behavior === 'jumper' || Math.random() < 0.3) {
+                enemy.velocityY = -10 - Math.random() * 6;
+                enemy.jumping = true;
+            }
+            enemy.jumpTimer = 30 + Math.random() * 90;
+        }
+
+        // Apply physics
+        enemy.velocityY += 0.7; // Gravity
+        enemy.y += enemy.velocityY;
+        enemy.x += enemy.velocityX;
+
+        // Also move with game scroll
+        enemy.x -= gameSpeed * 0.3;
+
+        // Ground collision
+        if (enemy.y >= enemy.baseY) {
+            enemy.y = enemy.baseY;
+            enemy.velocityY = 0;
+            enemy.jumping = false;
+        }
+
+        // Keep enemy in bounds (can go slightly off left, bounces on right)
+        if (enemy.x > canvas.width - 50) {
+            enemy.x = canvas.width - 50;
+            enemy.velocityX = -Math.abs(enemy.velocityX);
+        }
+
+        // Draw enemy skeleton (facing left if moving left)
+        const facingLeft = enemy.velocityX < 0;
+        drawEnemySkeleton(enemy.x, enemy.y, enemy.frame, facingLeft);
+
+        // Remove if off screen left
+        if (enemy.x + enemy.width < -50) {
+            enemySkeletons.splice(i, 1);
+            score += 25; // Bonus for surviving past a skeleton
+        }
+    }
+
+    // Update and draw Hulks
+    for (let i = hulks.length - 1; i >= 0; i--) {
+        const hulk = hulks[i];
+        hulk.frame++;
+        hulk.lifespan--;
+
+        // Move toward player
+        hulk.x += hulk.velocityX;
+        hulk.x -= gameSpeed * 0.2;
+        hulk.facingLeft = hulk.velocityX < 0;
+
+        // Jumping behavior
+        hulk.jumpTimer--;
+        if (hulk.jumpTimer <= 0 && !hulk.jumping) {
+            hulk.velocityY = -14;
+            hulk.jumping = true;
+            hulk.jumpTimer = 80 + Math.random() * 120;
+        }
+
+        // Gravity
+        hulk.velocityY += 0.8;
+        hulk.y += hulk.velocityY;
+
+        // Ground collision
+        if (hulk.y + hulk.height >= groundY) {
+            // Ground pound shake when landing from a jump
+            if (hulk.jumping && hulk.velocityY > 5) {
+                screenShake = 12;
+                screenShakeIntensity = 8;
+            }
+            hulk.y = groundY - hulk.height;
+            hulk.velocityY = 0;
+            hulk.jumping = false;
+        }
+
+        // Smash cooldown
+        if (hulk.smashCooldown > 0) hulk.smashCooldown--;
+        if (hulk.smashTimer > 0) hulk.smashTimer--;
+
+        // Flashing when about to despawn (last 2 seconds)
+        if (hulk.lifespan < 120 && hulk.lifespan % 10 < 5) {
+            ctx.globalAlpha = 0.5;
+        }
+
+        // Draw hulk
+        drawHulk(hulk.x, hulk.y, hulk.frame, hulk);
+        ctx.globalAlpha = 1.0;
+
+        // Timer countdown display
+        const secsLeft = Math.ceil(hulk.lifespan / 60);
+        if (secsLeft <= 5) {
+            ctx.fillStyle = '#ff4444';
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillText(secsLeft + 's', hulk.x + 30, hulk.y - 5);
+        }
+
+        // Remove if lifespan expired or off screen
+        if (hulk.lifespan <= 0 || hulk.x + hulk.width < -80) {
+            hulks.splice(i, 1);
+            score += 200;
+        }
+    }
+
+    // Update player
+    player.frame++;
+
+    if (inShip) {
+        // Flying controls
+        const flySpeed = 6;
+        if (keys.up && player.y > 20) player.y -= flySpeed;
+        if (keys.down && player.y < groundY - 60) player.y += flySpeed;
+        if (keys.left && player.x > 50) player.x -= flySpeed;
+        if (keys.right && player.x < canvas.width - 100) player.x += flySpeed;
+
+        // Consume fuel
+        shipFuel -= 0.15;
+        document.getElementById('fuel').textContent = Math.floor(shipFuel);
+
+        // Exit ship if fuel runs out or press E
+        if (shipFuel <= 0) {
+            inShip = false;
+            document.getElementById('fuelDisplay').style.display = 'none';
+            player.velocityY = 0;
+        }
+
+        // === X-WING LASER FIRING ===
+        if (shipLaserCooldown > 0) shipLaserCooldown--;
+
+        if (keys.shoot && shipLaserCooldown === 0) {
+            const b = Math.sin(player.frame * 0.1) * 3;
+            const wingSpread = 18;
+            // Cycle through 4 cannons for alternating fire
+            const cannonOffsets = [
+                { x: 66, y: -wingSpread - 1 },   // Top-left cannon
+                { x: 66, y: wingSpread + 23 },    // Bottom-left cannon
+                { x: 66, y: -wingSpread + 5 },    // Top-right cannon
+                { x: 66, y: wingSpread + 17 },    // Bottom-right cannon
+            ];
+            const cannon = cannonOffsets[shipLaserCannon % 4];
+            shipLasers.push({
+                x: player.x + cannon.x,
+                y: player.y + cannon.y + b,
+                width: 16,
+                height: 3,
+                speed: 18
+            });
+            shipLaserCannon++;
+            shipLaserCooldown = shipLaserCooldownMax;
+        }
+
+        // Draw ship with player
+        drawShip(player.x, player.y, player.frame, true);
+
+        // Ship collision box is bigger
+        player.width = 70;
+        player.height = 50;
+    } else {
+        // === ROCKET BOOSTER LOGIC ===
+        boosterActive = keys.shift && boosterFuel > 0;
+        if (boosterActive) {
+            player.velocityY -= 1.8; // Thrust upward
+            if (player.velocityY < -10) player.velocityY = -10; // Cap upward speed
+            boosterFuel -= 0.5;
+            if (boosterFuel < 0) boosterFuel = 0;
+            // Slight horizontal boost forward
+            if (keys.right) player.x += 3;
+            if (keys.left) player.x -= 3;
+            // Keep in bounds
+            if (player.y < 10) player.y = 10;
+            if (player.x < 30) player.x = 30;
+            if (player.x > canvas.width - 60) player.x = canvas.width - 60;
+        }
+
+        // Normal ground movement
+        player.velocityY += 0.8; // Gravity
+        player.y += player.velocityY;
+
+        // Reset player size
+        player.width = 30;
+        player.height = 54;
+
+        // Ground collision
+        let onGround = false;
+        let overLava = false;
+        let onBlock = false;
+
+        // Check if player can land on blocks (platforms)
+        for (let obs of obstacles) {
+            // Check if player is falling onto the top of a block
+            if (player.velocityY > 0 && // Falling down
+                player.x + player.width > obs.x + 5 && // Overlapping horizontally (with some margin)
+                player.x < obs.x + obs.width - 5 &&
+                player.y + player.height >= obs.y && // Feet at or below block top
+                player.y + player.height <= obs.y + 20) { // But not too far into block
+
+                player.y = obs.y - player.height;
+                player.velocityY = 0;
+                player.jumping = false;
+                player.jumpCount = 0;
+                onBlock = true;
+                onGround = true;
+                break;
+            }
+        }
+
+        for (let pit of lavaPits) {
+            if (player.x + player.width > pit.x && player.x < pit.x + pit.width) {
+                overLava = true;
+                break;
+            }
+        }
+
+        if (!onBlock && !overLava && player.y + player.height >= groundY) {
+            player.y = groundY - player.height;
+            player.velocityY = 0;
+            player.jumping = false;
+            player.jumpCount = 0;
+            onGround = true;
+        }
+
+        // Recharge booster fuel when on ground and not boosting
+        if (onGround && !boosterActive) {
+            boosterFuel += 0.3;
+            if (boosterFuel > maxBoosterFuel) boosterFuel = maxBoosterFuel;
+        }
+
+        // Update booster UI
+        document.getElementById('boosterFuel').textContent = Math.floor(boosterFuel);
+        document.getElementById('boosterFuel').style.color = boosterFuel < 20 ? '#ff3333' : '#ff6600';
+
+        // === LASER EYES LOGIC ===
+        if (laserCooldown > 0) laserCooldown--;
+
+        if (keys.shoot && laserCooldown === 0) {
+            const bobOffset = Math.sin(player.frame * 0.3) * 2;
+            // Fire two lasers from each eye
+            lasers.push({
+                x: player.x + 24,
+                y: player.y + 4 + bobOffset,
+                width: 20,
+                height: 3,
+                speed: 14
+            });
+            lasers.push({
+                x: player.x + 24,
+                y: player.y + 4 + bobOffset + 3,
+                width: 20,
+                height: 3,
+                speed: 14
+            });
+            laserCooldown = laserCooldownMax;
+        }
+
+        // Update laser status UI
+        document.getElementById('laserStatus').textContent = laserCooldown === 0 ? 'READY' : 'CHARGING';
+        document.getElementById('laserStatus').style.color = laserCooldown === 0 ? '#ff4444' : '#884444';
+
+        // Draw player
+        drawZombie(player.x, player.y, player.frame);
+    }
+
+    // === UPDATE AND DRAW LASERS ===
+    for (let i = lasers.length - 1; i >= 0; i--) {
+        lasers[i].x += lasers[i].speed;
+        lasers[i].width += 2; // Beam extends as it travels
+        drawLaser(lasers[i]);
+
+        // Remove if off screen
+        if (lasers[i].x > canvas.width + 20) {
+            lasers.splice(i, 1);
+            continue;
+        }
+
+        // Laser hits enemy skeletons
+        for (let j = enemySkeletons.length - 1; j >= 0; j--) {
+            if (checkCollision(lasers[i], enemySkeletons[j])) {
+                // Destroy enemy with laser!
+                enemySkeletons.splice(j, 1);
+                score += 75;
+                // Remove laser after hit
+                lasers.splice(i, 1);
+                break;
+            }
+        }
+        if (i >= lasers.length) continue;
+
+        // Laser hits obstacles (destroys them)
+        for (let j = obstacles.length - 1; j >= 0; j--) {
+            if (checkCollision(lasers[i], obstacles[j])) {
+                obstacles.splice(j, 1);
+                score += 15;
+                lasers.splice(i, 1);
+                break;
+            }
+        }
+        if (i >= lasers.length) continue;
+
+        // Laser hits Hulks (knocks back but doesn't kill)
+        for (let j = hulks.length - 1; j >= 0; j--) {
+            if (checkCollision(lasers[i], hulks[j])) {
+                hulks[j].x -= 8; // Knocked back
+                lasers.splice(i, 1);
+                score += 10;
+                break;
+            }
+        }
+    }
+
+    // === UPDATE AND DRAW X-WING LASERS ===
+    for (let i = shipLasers.length - 1; i >= 0; i--) {
+        shipLasers[i].x += shipLasers[i].speed;
+        drawShipLaser(shipLasers[i]);
+
+        // Remove if off screen
+        if (shipLasers[i].x > canvas.width + 20) {
+            shipLasers.splice(i, 1);
+            continue;
+        }
+
+        // Ship laser hits enemy skeletons
+        for (let j = enemySkeletons.length - 1; j >= 0; j--) {
+            if (checkCollision(shipLasers[i], enemySkeletons[j])) {
+                enemySkeletons.splice(j, 1);
+                score += 100;
+                shipLasers.splice(i, 1);
+                break;
+            }
+        }
+        if (i >= shipLasers.length) continue;
+
+        // Ship laser hits obstacles
+        for (let j = obstacles.length - 1; j >= 0; j--) {
+            if (checkCollision(shipLasers[i], obstacles[j])) {
+                obstacles.splice(j, 1);
+                score += 20;
+                shipLasers.splice(i, 1);
+                break;
+            }
+        }
+        if (i >= shipLasers.length) continue;
+
+        // Ship laser hits Hulks (knocks back but doesn't kill)
+        for (let j = hulks.length - 1; j >= 0; j--) {
+            if (checkCollision(shipLasers[i], hulks[j])) {
+                hulks[j].x -= 12; // Stronger knockback from X-Wing
+                shipLasers.splice(i, 1);
+                score += 15;
+                break;
+            }
+        }
+    }
+
+    // Update skeleton with dynamic movement
+    skeleton.frame++;
+
+    // Base catch-up speed
+    const catchUpSpeed = 0.008 + (score / 40000);
+    skeleton.x += catchUpSpeed + skeleton.lungeSpeed;
+
+    // Random lunging behavior
+    skeleton.lungeTimer--;
+    if (skeleton.lungeTimer <= 0) {
+        // Randomly decide to lunge or retreat
+        if (Math.random() < 0.3) {
+            skeleton.lungeSpeed = 2 + Math.random() * 2; // Lunge forward!
+            skeleton.lungeTimer = 20 + Math.random() * 30;
+        } else if (Math.random() < 0.2) {
+            skeleton.lungeSpeed = -1; // Fall back slightly
+            skeleton.lungeTimer = 15;
+        } else {
+            skeleton.lungeSpeed = 0;
+            skeleton.lungeTimer = 60 + Math.random() * 120;
+        }
+    }
+
+    // Decay lunge speed
+    skeleton.lungeSpeed *= 0.95;
+
+    // Keep skeleton from going too far back or catching player too fast
+    if (skeleton.x < -20) skeleton.x = -20;
+    if (skeleton.x > player.x - 50) skeleton.x = player.x - 50;
+
+    // Jumping behavior - skeleton jumps randomly
+    if (!skeleton.jumping && Math.random() < 0.02) {
+        skeleton.velocityY = -12 - Math.random() * 5;
+        skeleton.jumping = true;
+    }
+
+    // Apply gravity to skeleton
+    skeleton.velocityY += 0.7;
+    skeleton.y += skeleton.velocityY;
+
+    // Ground collision for skeleton
+    if (skeleton.y >= skeleton.baseY) {
+        skeleton.y = skeleton.baseY;
+        skeleton.velocityY = 0;
+        skeleton.jumping = false;
+    }
+
+    // Bobbing/strafing movement (vertical wobble while chasing)
+    skeleton.bobPhase += 0.1;
+    const verticalBob = Math.sin(skeleton.bobPhase) * 3;
+
+    // Draw skeleton at calculated position
+    drawSkeleton(skeleton.x, skeleton.y + verticalBob, skeleton.frame);
+
+    // Check collisions with obstacles (ship destroys them, player can jump on them)
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        if (checkCollision(player, obstacles[i])) {
+            if (inShip) {
+                // Destroy obstacle and lose some fuel
+                obstacles.splice(i, 1);
+                shipFuel -= 5;
+                score += 20;
+            }
+            // When not in ship, blocks are platforms - no death!
+        }
+    }
+
+    // Check collision with enemy skeletons
+    for (let i = enemySkeletons.length - 1; i >= 0; i--) {
+        if (checkCollision(player, enemySkeletons[i])) {
+            if (inShip) {
+                // Destroy skeleton!
+                enemySkeletons.splice(i, 1);
+                shipFuel -= 10;
+                score += 100;
+            } else {
+                endGame();
+                return;
+            }
+        }
+    }
+
+    // Check collision with Hulks
+    for (let i = hulks.length - 1; i >= 0; i--) {
+        if (checkCollision(player, hulks[i])) {
+            if (inShip) {
+                // HULK SMASH! Destroys the X-Wing and forces player out!
+                if (hulks[i].smashCooldown <= 0) {
+                    hulks[i].smashTimer = 25;
+                    hulks[i].smashCooldown = 60;
+                    inShip = false;
+                    document.getElementById('fuelDisplay').style.display = 'none';
+                    player.y = groundY - 54;
+                    player.width = 30;
+                    player.height = 54;
+                    player.velocityY = -12; // Knocked upward
+                    playerHealth -= 20; // 20% damage
+                    damageFlash = 20;
+                    screenShake = 25;
+                    screenShakeIntensity = 18;
+                    if (playerHealth <= 0) {
+                        endGame();
+                        return;
+                    }
+                }
+            } else {
+                // Hulk smash on foot - 20% damage and knockback
+                if (hulks[i].smashCooldown <= 0) {
+                    hulks[i].smashTimer = 25;
+                    hulks[i].smashCooldown = 60;
+                    playerHealth -= 20;
+                    damageFlash = 20;
+                    screenShake = 25;
+                    screenShakeIntensity = 18;
+                    player.velocityY = -14; // Knocked way up
+                    player.x -= 30; // Knocked back
+                    if (player.x < 40) player.x = 40;
+                    if (playerHealth <= 0) {
+                        endGame();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // Lava only kills if not in ship or very low
+    if (!inShip && checkLavaCollision()) {
+        endGame();
+        return;
+    }
+
+    if (checkSkeletonCatch()) {
+        endGame();
+        return;
+    }
+
+    // Update health UI
+    document.getElementById('healthBar').textContent = Math.max(0, Math.floor(playerHealth));
+    const hpColor = playerHealth > 60 ? '#44ff44' : playerHealth > 30 ? '#ffaa00' : '#ff3333';
+    document.getElementById('healthBar').style.color = hpColor;
+
+    // Draw health bar on screen (visual bar above UI)
+    const barX = canvas.width - 170;
+    const barY = 12;
+    const barW = 150;
+    const barH = 14;
+    const hpRatio = Math.max(0, playerHealth / maxPlayerHealth);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = hpRatio > 0.6 ? '#44ff44' : hpRatio > 0.3 ? '#ffaa00' : '#ff3333';
+    ctx.fillRect(barX + 1, barY + 1, (barW - 2) * hpRatio, barH - 2);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barW, barH);
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px Courier New';
+    ctx.fillText('HP', barX - 20, barY + 11);
+
+    // Damage flash overlay
+    if (damageFlash > 0) {
+        ctx.fillStyle = `rgba(255, 0, 0, ${damageFlash * 0.02})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        damageFlash--;
+    }
+
+    // Update score
+    score++;
+    document.getElementById('score').textContent = score;
+
+    ctx.restore(); // End screen shake transform
+
+    requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+    gameRunning = true;
+    score = 0;
+    coins = 0;
+    gameSpeed = 5;
+    obstacles = [];
+    lavaPits = [];
+    coinArray = [];
+    enemySkeletons = [];
+    hulks = [];
+    ship = null;
+    inShip = false;
+    shipFuel = maxShipFuel;
+
+    player.x = 150;
+    player.y = groundY - player.height;
+    player.width = 30;
+    player.height = 54;
+    player.velocityY = 0;
+    player.jumping = false;
+    player.jumpCount = 0;
+
+    // Reset health and state
+    playerHealth = maxPlayerHealth;
+    damageFlash = 0;
+    fireballs = [];
+    gamePaused = false;
+    screenShake = 0;
+    screenShakeIntensity = 0;
+
+    // Reset booster and lasers
+    boosterFuel = maxBoosterFuel;
+    boosterActive = false;
+    lasers = [];
+    laserCooldown = 0;
+    shipLasers = [];
+    shipLaserCooldown = 0;
+    shipLaserCannon = 0;
+
+    document.getElementById('fuelDisplay').style.display = 'none';
+
+    skeleton.x = 30;
+    skeleton.y = skeleton.baseY;
+    skeleton.velocityY = 0;
+    skeleton.jumping = false;
+    skeleton.lungeTimer = 100;
+    skeleton.lungeSpeed = 0;
+    skeleton.bobPhase = 0;
+
+    document.getElementById('coins').textContent = '0';
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('gameOver').style.display = 'none';
+
+    lastEnemySkeletonSpawnTime = 0;
+    lastShipSpawnTime = 0;
+    lastHulkSpawnTime = 0;
+    requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+    gameRunning = false;
+    inShip = false;
+    document.getElementById('fuelDisplay').style.display = 'none';
+
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('zombieRunnerHighScore', highScore);
+        document.getElementById('highScore').textContent = highScore;
+    }
+
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('finalCoins').textContent = coins;
+    document.getElementById('gameOver').style.display = 'block';
+}
+
+// Event listeners
+document.addEventListener('keydown', (e) => {
+    // Pause toggle
+    if ((e.code === 'KeyP' || e.code === 'Escape') && gameRunning) {
+        e.preventDefault();
+        gamePaused = !gamePaused;
+        return;
+    }
+
+    if (gamePaused) return; // Ignore other keys while paused
+
+    if (e.code === 'Space') {
+        e.preventDefault();
+        if (gameRunning && !inShip) {
+            jump();
+        }
+    }
+
+    // Flying controls
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+
+    // Rocket booster
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        e.preventDefault();
+        keys.shift = true;
+    }
+
+    // Laser eyes
+    if (e.code === 'KeyF') keys.shoot = true;
+
+    // Enter/Exit ship with E
+    if (e.code === 'KeyE' && gameRunning) {
+        if (!inShip && ship) {
+            // Check if close enough to enter
+            const shipHitbox = { x: ship.x, y: ship.y, width: ship.width, height: ship.height };
+            const playerHitbox = { x: player.x - 30, y: player.y - 30, width: player.width + 60, height: player.height + 60 };
+            if (checkCollision(playerHitbox, shipHitbox)) {
+                inShip = true;
+                player.x = ship.x;
+                player.y = ship.y;
+                ship = null;
+                shipFuel = maxShipFuel;
+                document.getElementById('fuelDisplay').style.display = 'block';
+                document.getElementById('fuel').textContent = shipFuel;
+            }
+        } else if (inShip) {
+            // Exit ship
+            inShip = false;
+            document.getElementById('fuelDisplay').style.display = 'none';
+            player.y = groundY - 54;
+            player.velocityY = 0;
+        }
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
+    if (e.code === 'KeyF') keys.shoot = false;
+});
+
+canvas.addEventListener('click', () => {
+    if (gameRunning && !inShip) {
+        jump();
+    }
+});
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+document.getElementById('musicBtn').addEventListener('click', toggleMusic);
+
+// Initial draw
+drawBackground();
+drawGround(0);
+drawZombie(player.x, groundY - 54, 0);
+drawSkeleton(skeleton.x, groundY - 54, 0);
