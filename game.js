@@ -438,109 +438,223 @@ function drawCoin(x, y, frame) {
 
 // Draw X-Wing starfighter
 function drawShip(x, y, frame, hasPlayer) {
-    const bobOffset = Math.sin(frame * 0.1) * 3;
-    const b = bobOffset; // shorthand
+    const b   = Math.sin(frame * 0.1) * 3;
+    const eg  = Math.sin(frame * 0.25) * 20 + 185;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-    // Wing spread animation (wings open when flying)
-    const wingSpread = hasPlayer ? 18 : 12;
+    const cy  = y + 20 + b;          // fuselage centre y
+    const sp  = hasPlayer ? 38 : 22; // half-spread to outer wing tip
 
-    // === FOUR S-FOILS (wings in X formation) ===
-    // Top-left wing
-    drawPixelRect(x + 8, y - wingSpread + b, 40, 4, '#c8c8c8');
-    drawPixelRect(x + 8, y - wingSpread + b, 4, 4, '#aa3333'); // Wing stripe
-    drawPixelRect(x + 16, y - wingSpread + b, 4, 4, '#aa3333');
-    // Top-left laser cannon
-    drawPixelRect(x + 46, y - wingSpread - 1 + b, 18, 3, '#777');
-    drawPixelRect(x + 62, y - wingSpread - 2 + b, 4, 5, '#555');
-    // Cannon tip glow
-    if (hasPlayer && frame % 8 < 4) {
-        drawPixelRect(x + 65, y - wingSpread - 1 + b, 3, 3, '#ff3333');
-    }
+    // Wing panel x extents — wide flat panels like the real thing
+    const wRear  = x + 10;  // trailing edge (near engines)
+    const wFront = x + 66;  // leading edge (toward nose)
 
-    // Bottom-left wing
-    drawPixelRect(x + 8, y + wingSpread + 22 + b, 40, 4, '#c8c8c8');
-    drawPixelRect(x + 8, y + wingSpread + 22 + b, 4, 4, '#aa3333');
-    drawPixelRect(x + 16, y + wingSpread + 22 + b, 4, 4, '#aa3333');
-    // Bottom-left laser cannon
-    drawPixelRect(x + 46, y + wingSpread + 23 + b, 18, 3, '#777');
-    drawPixelRect(x + 62, y + wingSpread + 22 + b, 4, 5, '#555');
-    if (hasPlayer && frame % 8 < 4) {
-        drawPixelRect(x + 65, y + wingSpread + 23 + b, 3, 3, '#ff3333');
-    }
+    // 4 wing panel y-ranges [top-edge, bottom-edge]
+    const wings = [
+        [cy - sp - 14, cy - sp + 2 ],            // top-outer
+        [cy - sp * 0.5 - 5, cy - sp * 0.5 + 5 ], // top-inner
+        [cy + sp * 0.5 - 3, cy + sp * 0.5 + 7 ], // bottom-inner
+        [cy + sp - 2,  cy + sp + 14],             // bottom-outer
+    ];
 
-    // Top-right wing (slightly higher for X shape)
-    drawPixelRect(x + 8, y - wingSpread + 6 + b, 40, 4, '#b8b8b8');
-    drawPixelRect(x + 8, y - wingSpread + 6 + b, 4, 4, '#aa3333');
-    drawPixelRect(x + 16, y - wingSpread + 6 + b, 4, 4, '#aa3333');
+    // ── WIDE RECTANGULAR WING PANELS ──────────────────────────────
+    wings.forEach(([y0, y1], idx) => {
+        const h   = y1 - y0;
+        const mid = (y0 + y1) / 2;
 
-    // Bottom-right wing
-    drawPixelRect(x + 8, y + wingSpread + 16 + b, 40, 4, '#b8b8b8');
-    drawPixelRect(x + 8, y + wingSpread + 16 + b, 4, 4, '#aa3333');
-    drawPixelRect(x + 16, y + wingSpread + 16 + b, 4, 4, '#aa3333');
+        // Wing fill — off-white/cream, darker on outer edge
+        const panG = ctx.createLinearGradient(0, y0, 0, y1);
+        panG.addColorStop(0,   idx < 2 ? '#d4d0c0' : '#e8e4d4');
+        panG.addColorStop(0.5, '#eee8d8');
+        panG.addColorStop(1,   idx < 2 ? '#e8e4d4' : '#d4d0c0');
+        ctx.fillStyle = panG;
+        ctx.beginPath();
+        ctx.moveTo(wRear,  y0 + (idx < 2 ? 1 : 0));
+        ctx.lineTo(wFront, y0);
+        ctx.lineTo(wFront, y1);
+        ctx.lineTo(wRear,  y1 - (idx < 2 ? 0 : 1));
+        ctx.closePath(); ctx.fill();
 
-    // Wing struts connecting to fuselage
-    drawPixelRect(x + 12, y + 4 + b, 4, wingSpread - 4, '#999');
-    drawPixelRect(x + 12, y + 22 + b, 4, wingSpread - 4, '#999');
+        // Wing outline
+        ctx.strokeStyle = 'rgba(68,62,50,0.5)'; ctx.lineWidth = 0.9;
+        ctx.strokeRect(wRear, y0, wFront - wRear, h);
 
-    // === MAIN FUSELAGE (long nose) ===
-    // Rear fuselage
-    drawPixelRect(x, y + 8 + b, 20, 12, '#d0d0d0');
-    drawPixelRect(x + 2, y + 9 + b, 16, 10, '#bbb');
+        // BIG red block marking (bold, slightly weathered)
+        const rX = wRear + 7, rW = wFront - wRear - 14;
+        const rY = mid - h * 0.28, rH = h * 0.56;
+        ctx.fillStyle = '#c8281a';
+        ctx.fillRect(rX, rY, rW, rH);
+        // Light edge on red (paint highlight)
+        ctx.fillStyle = 'rgba(255,245,230,0.2)';
+        ctx.fillRect(rX, rY, rW * 0.32, rH);
+        // Dark weathering on right side of red
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.fillRect(rX + rW * 0.58, rY, rW * 0.3, rH * 0.85);
 
-    // Mid fuselage
-    drawPixelRect(x + 18, y + 6 + b, 30, 16, '#ddd');
-    drawPixelRect(x + 20, y + 7 + b, 26, 14, '#ccc');
+        // Panel lines across wing
+        ctx.strokeStyle = 'rgba(68,62,50,0.28)'; ctx.lineWidth = 0.7;
+        [0.26, 0.50, 0.72].forEach(t => {
+            const lx = wRear + (wFront - wRear) * t;
+            ctx.beginPath(); ctx.moveTo(lx, y0); ctx.lineTo(lx, y1); ctx.stroke();
+        });
+        ctx.beginPath(); ctx.moveTo(wRear, mid); ctx.lineTo(wFront, mid); ctx.stroke();
+    });
 
-    // Nose (long pointed X-Wing nose)
-    drawPixelRect(x + 46, y + 8 + b, 18, 12, '#e0e0e0');
-    drawPixelRect(x + 62, y + 10 + b, 10, 8, '#d8d8d8');
-    drawPixelRect(x + 70, y + 11 + b, 6, 6, '#ccc');
-    drawPixelRect(x + 74, y + 12 + b, 4, 4, '#bbb');
+    // ── LONG RIBBED LASER CANNONS (at leading edge of each wing tip) ──
+    const canRootX = wFront + 2;
+    const canTipX  = x + 134;
+    const canLen   = canTipX - canRootX;
+    wings.forEach(([y0, y1]) => {
+        const cy_ = (y0 + y1) / 2;
+        // Main barrel
+        ctx.strokeStyle = '#c0bca8'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(canRootX, cy_); ctx.lineTo(canTipX, cy_); ctx.stroke();
+        // Ribbed bands (characteristic X-Wing cannon look)
+        ctx.fillStyle = '#7a7660';
+        for (let rb = 0; rb < 6; rb++) {
+            const bx = canRootX + canLen * (0.05 + rb * 0.175);
+            ctx.fillRect(bx - 1.5, cy_ - 3, 3, 6);
+        }
+        // Muzzle tip
+        ctx.fillStyle = '#4a4840';
+        ctx.fillRect(canTipX - 4, cy_ - 3, 6, 6);
+        if (hasPlayer && frame % 8 < 4) {
+            ctx.fillStyle = '#ff4400'; ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 14;
+            ctx.beginPath(); ctx.arc(canTipX, cy_, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    });
 
-    // === COCKPIT (round glass canopy) ===
-    drawPixelRect(x + 28, y + 4 + b, 16, 4, '#444'); // Canopy frame
-    drawPixelRect(x + 30, y + 5 + b, 12, 2, '#00aaff'); // Glass top
-    drawPixelRect(x + 26, y + 8 + b, 20, 10, '#444'); // Canopy frame
-    drawPixelRect(x + 28, y + 9 + b, 16, 8, '#0088dd'); // Glass main
-    drawPixelRect(x + 30, y + 10 + b, 6, 4, '#00bbff'); // Glass shine
+    // ── FUSELAGE ──────────────────────────────────────────────────
+    const fusG = ctx.createLinearGradient(x, cy - 13, x, cy + 13);
+    fusG.addColorStop(0,   '#c2bead'); fusG.addColorStop(0.3, '#ece8d8');
+    fusG.addColorStop(0.7, '#e0dace'); fusG.addColorStop(1,   '#b4b0a0');
+    ctx.fillStyle = fusG;
+    ctx.beginPath();
+    ctx.moveTo(x + 8,      cy - 10);
+    ctx.lineTo(wFront + 2, cy - 12);
+    ctx.bezierCurveTo(x + 90, cy - 11, x + 112, cy - 4, x + 132, cy);
+    ctx.bezierCurveTo(x + 112, cy + 4, x + 90, cy + 11, wFront + 2, cy + 12);
+    ctx.lineTo(x + 8,      cy + 10);
+    ctx.closePath(); ctx.fill();
 
-    // === ENGINE EXHAUSTS (4 engines at rear) ===
-    const glowIntensity = Math.sin(frame * 0.3) * 30 + 200;
-    // Top engines
-    drawPixelRect(x - 2, y + 8 + b, 6, 4, '#666');
-    drawPixelRect(x - 2, y + 16 + b, 6, 4, '#666');
-    // Engine glow circles
-    drawPixelRect(x - 4, y + 9 + b, 4, 2, `rgb(${glowIntensity}, ${glowIntensity * 0.4}, ${glowIntensity * 0.1})`);
-    drawPixelRect(x - 4, y + 17 + b, 4, 2, `rgb(${glowIntensity}, ${glowIntensity * 0.4}, ${glowIntensity * 0.1})`);
+    // Hull outline
+    ctx.strokeStyle = 'rgba(68,62,50,0.45)'; ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(x + 8, cy - 10); ctx.lineTo(wFront + 2, cy - 12);
+    ctx.bezierCurveTo(x + 90, cy - 11, x + 112, cy - 4, x + 132, cy);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 8, cy + 10); ctx.lineTo(wFront + 2, cy + 12);
+    ctx.bezierCurveTo(x + 90, cy + 11, x + 112, cy + 4, x + 132, cy);
+    ctx.stroke();
 
-    // Flames when flying
+    // Fuselage red stripe along body
+    ctx.fillStyle = '#c8281a';
+    ctx.beginPath();
+    ctx.moveTo(x + 16, cy - 5); ctx.lineTo(x + 65, cy - 6);
+    ctx.lineTo(x + 65, cy - 2); ctx.lineTo(x + 16, cy - 1);
+    ctx.closePath(); ctx.fill();
+
+    // Fuselage panel lines
+    ctx.strokeStyle = 'rgba(68,62,50,0.28)'; ctx.lineWidth = 0.8;
+    [x + 26, x + 42, x + 58, x + 74, x + 90].forEach(px => {
+        ctx.beginPath(); ctx.moveTo(px, cy - 11); ctx.lineTo(px, cy + 11); ctx.stroke();
+    });
+    // Dorsal spine ridge
+    ctx.strokeStyle = 'rgba(68,62,50,0.35)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(x + 12, cy - 7); ctx.lineTo(wFront, cy - 9); ctx.stroke();
+
+    // ── ENGINE NACELLES (4 fat cylinders at wing roots/rear) ──────
+    const nacX  = x + 16;  // nacelle centre x
+    const nacHL = 14;       // nacelle half-length along x
+    const nacHH = 7;        // nacelle half-height
+    wings.forEach(([y0, y1]) => {
+        const ny = (y0 + y1) / 2;
+
+        // Cylinder body with highlight
+        const nG = ctx.createLinearGradient(nacX, ny - nacHH, nacX, ny + nacHH);
+        nG.addColorStop(0,    '#9e9888'); nG.addColorStop(0.3, '#d2caba');
+        nG.addColorStop(0.65, '#b2a898'); nG.addColorStop(1,   '#6e6858');
+        ctx.fillStyle = nG;
+        ctx.beginPath();
+        ctx.moveTo(nacX - nacHL,     ny - nacHH + 1);
+        ctx.lineTo(nacX + nacHL,     ny - nacHH);
+        ctx.lineTo(nacX + nacHL,     ny + nacHH);
+        ctx.lineTo(nacX - nacHL,     ny + nacHH - 1);
+        ctx.closePath(); ctx.fill();
+
+        // Nacelle outline
+        ctx.strokeStyle = 'rgba(50,46,38,0.5)'; ctx.lineWidth = 0.9;
+        ctx.strokeRect(nacX - nacHL, ny - nacHH, nacHL * 2, nacHH * 2);
+
+        // Ring bands
+        ctx.strokeStyle = 'rgba(48,44,36,0.65)'; ctx.lineWidth = 1.3;
+        [0.22, 0.55].forEach(t => {
+            const bx = (nacX - nacHL) + nacHL * 2 * t;
+            ctx.beginPath(); ctx.moveTo(bx, ny - nacHH); ctx.lineTo(bx, ny + nacHH); ctx.stroke();
+        });
+
+        // Exhaust opening (dark ellipse at rear)
+        ctx.fillStyle = '#181410';
+        ctx.beginPath(); ctx.ellipse(nacX - nacHL, ny, 4, nacHH, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2a2018';
+        ctx.beginPath(); ctx.ellipse(nacX - nacHL, ny, 3, nacHH - 2, 0, 0, Math.PI * 2); ctx.fill();
+
+        // Engine glow
+        const eG = ctx.createRadialGradient(nacX - nacHL - 2, ny, 0, nacX - nacHL - 2, ny, 16);
+        eG.addColorStop(0,   `rgba(${eg}, ${eg * 0.42 | 0}, ${eg * 0.08 | 0}, 0.95)`);
+        eG.addColorStop(0.5, `rgba(${eg * 0.6 | 0}, ${eg * 0.15 | 0}, 0, 0.32)`);
+        eG.addColorStop(1,   'rgba(255,40,0,0)');
+        ctx.fillStyle = eG;
+        ctx.beginPath(); ctx.arc(nacX - nacHL - 2, ny, 16, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // Engine thruster flames
     if (hasPlayer) {
-        const fl = 12 + Math.random() * 18;
-        // Top engine flame
-        drawPixelRect(x - 4 - fl, y + 8 + b, fl, 4, '#ff4400');
-        drawPixelRect(x - 4 - fl + 4, y + 9 + b, fl - 4, 2, '#ffaa00');
-        drawPixelRect(x - 4 - fl + 8, y + 9 + b, fl - 12, 2, '#ffff66');
-        // Bottom engine flame
-        const fl2 = 10 + Math.random() * 16;
-        drawPixelRect(x - 4 - fl2, y + 16 + b, fl2, 4, '#ff4400');
-        drawPixelRect(x - 4 - fl2 + 4, y + 17 + b, fl2 - 4, 2, '#ffaa00');
-        drawPixelRect(x - 4 - fl2 + 8, y + 17 + b, fl2 - 12, 2, '#ffff66');
+        wings.forEach(([y0, y1]) => {
+            const ny = (y0 + y1) / 2;
+            const nx = nacX - nacHL - 2;
+            const fl = 18 + Math.random() * 28;
+            ctx.strokeStyle = 'rgba(255,130,20,0.9)';  ctx.lineWidth = 5 + Math.random() * 2;
+            ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(nx - fl, ny); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,220,100,0.7)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(nx - fl * 0.55, ny); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,210,0.45)'; ctx.lineWidth = 0.8;
+            ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(nx - fl * 0.3, ny); ctx.stroke();
+        });
     }
 
-    // === R2-D2 ASTROMECH DROID (behind cockpit) ===
-    drawPixelRect(x + 20, y + 4 + b, 6, 8, '#e8e8e8'); // R2 body
-    drawPixelRect(x + 21, y + 3 + b, 4, 3, '#4488cc'); // R2 dome
-    drawPixelRect(x + 22, y + 4 + b, 1, 1, '#ff0000'); // R2 eye
-    drawPixelRect(x + 20, y + 6 + b, 6, 2, '#4488cc'); // R2 blue stripe
+    // ── R2-D2 ─────────────────────────────────────────────────────
+    const r2x = x + 28, r2y = cy - 24;
+    const r2G = ctx.createRadialGradient(r2x + 3, r2y + 2, 0, r2x + 4, r2y + 4, 9);
+    r2G.addColorStop(0, '#ffffff'); r2G.addColorStop(0.5, '#dde8ff'); r2G.addColorStop(1, '#8899cc');
+    ctx.fillStyle = r2G;
+    ctx.beginPath(); ctx.ellipse(r2x + 4, r2y + 4, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b8c4d8';
+    ctx.beginPath(); ctx.rect(r2x - 1, r2y + 7, 11, 11); ctx.fill();
+    ctx.fillStyle = '#3366aa'; ctx.fillRect(r2x, r2y + 9, 9, 2);
+    ctx.fillStyle = '#ff2200'; ctx.beginPath(); ctx.arc(r2x + 4, r2y + 5, 1.5, 0, Math.PI * 2); ctx.fill();
 
-    // Draw zombie pilot if has player
+    // ── COCKPIT (bubble canopy) ────────────────────────────────────
+    const cpx = x + 48, cpy = cy - 22;
+    ctx.fillStyle = '#26221c';
+    ctx.beginPath(); ctx.ellipse(cpx + 13, cpy + 11, 18, 13, 0, 0, Math.PI * 2); ctx.fill();
+    const cpG = ctx.createRadialGradient(cpx + 10, cpy + 8, 0, cpx + 13, cpy + 11, 17);
+    cpG.addColorStop(0, '#88ccff'); cpG.addColorStop(0.4, '#0088dd'); cpG.addColorStop(1, '#002244');
+    ctx.fillStyle = cpG;
+    ctx.beginPath(); ctx.ellipse(cpx + 13, cpy + 11, 15, 10.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.beginPath(); ctx.ellipse(cpx + 9, cpy + 8, 6.5, 4, -0.3, 0, Math.PI * 2); ctx.fill();
     if (hasPlayer) {
-        // Mini Luke pilot in cockpit
-        drawPixelRect(x + 31, y + 7 + b, 10, 4, '#e0e0e0'); // Helmet
-        drawPixelRect(x + 32, y + 9 + b, 8, 6, '#e8b88a'); // Face
-        drawPixelRect(x + 33, y + 10 + b, 2, 2, '#3366aa'); // Eyes
-        drawPixelRect(x + 37, y + 10 + b, 2, 2, '#3366aa');
+        ctx.fillStyle = '#e0e0e0';
+        ctx.beginPath(); ctx.ellipse(cpx + 13, cpy + 10, 5.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ddaa88';
+        ctx.beginPath(); ctx.ellipse(cpx + 13, cpy + 13, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
     }
+
+    ctx.restore();
 }
 
 // Draw pickup ship (floating, waiting to be entered)
@@ -1082,6 +1196,26 @@ function drawGigantamaxCharizard(ch) {
     ctx.moveTo(tSX - 5, tSY + 2);
     ctx.bezierCurveTo(tSX + 32, tSY + 34, tSX + 64, tSY + 56, tSX + 68, tSY + 97);
     ctx.stroke();
+    // Dragon tail spade (arrowhead tip)
+    {
+        const spX = tSX + 52, spY = tSY + 152;
+        const spadeG = ctx.createRadialGradient(spX, spY + 8, 2, spX, spY + 14, 26);
+        spadeG.addColorStop(0, '#ee5511'); spadeG.addColorStop(0.5, '#cc3300'); spadeG.addColorStop(1, '#7a1500');
+        ctx.fillStyle = spadeG;
+        ctx.beginPath();
+        ctx.moveTo(spX, spY - 10);                                             // top notch
+        ctx.bezierCurveTo(spX + 20, spY + 4, spX + 28, spY + 18, spX, spY + 42);  // right lobe
+        ctx.bezierCurveTo(spX - 28, spY + 18, spX - 20, spY + 4, spX, spY - 10);  // left lobe
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#5a1000'; ctx.lineWidth = 1.5; ctx.stroke();
+        // Spade highlight
+        ctx.fillStyle = 'rgba(255,100,30,0.22)';
+        ctx.beginPath();
+        ctx.moveTo(spX - 4, spY - 6);
+        ctx.bezierCurveTo(spX + 8, spY + 2, spX + 14, spY + 12, spX + 4, spY + 30);
+        ctx.bezierCurveTo(spX - 10, spY + 14, spX - 6, spY + 2, spX - 4, spY - 6);
+        ctx.closePath(); ctx.fill();
+    }
     // Tail flame (animated organic shape)
     const tFX = tSX + 52, tFY = tSY + 182 + bo * 0.25;
     ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 38;
@@ -1149,6 +1283,31 @@ function drawGigantamaxCharizard(ch) {
         }
     }
 
+    // ── DORSAL SPINES (along back ridge) ─────────────────────────────
+    const spineCount = 6;
+    for (let si = 0; si < spineCount; si++) {
+        const t = si / (spineCount - 1);
+        // Spines run along the top-right back from shoulder to lower back
+        const spX = x + 130 + t * 68;
+        const spY = y + 88 + t * 32 + bo;
+        const spH = 22 - si * 2.5;  // tallest at shoulder, shorter toward tail
+        const spW = 6 + si * 0.5;
+        const spineG = ctx.createLinearGradient(spX, spY, spX + 3, spY - spH);
+        spineG.addColorStop(0, '#3a2800'); spineG.addColorStop(0.5, '#1e1408'); spineG.addColorStop(1, '#0a0804');
+        ctx.fillStyle = spineG;
+        ctx.beginPath();
+        ctx.moveTo(spX - spW * 0.5, spY);
+        ctx.bezierCurveTo(spX - spW * 0.4, spY - spH * 0.5, spX - 2, spY - spH * 0.9, spX + 1, spY - spH);
+        ctx.bezierCurveTo(spX + 4, spY - spH * 0.9, spX + spW * 0.6, spY - spH * 0.4, spX + spW * 0.5, spY);
+        ctx.closePath(); ctx.fill();
+        // Spine highlight edge
+        ctx.strokeStyle = 'rgba(100,60,10,0.4)'; ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(spX - spW * 0.3, spY);
+        ctx.bezierCurveTo(spX - spW * 0.25, spY - spH * 0.5, spX - 1, spY - spH * 0.92, spX + 1, spY - spH);
+        ctx.stroke();
+    }
+
     // ── NECK ─────────────────────────────────────────────────────────
     ctx.beginPath();
     ctx.moveTo(x + 60, y + 96 + bo);
@@ -1161,6 +1320,21 @@ function drawGigantamaxCharizard(ch) {
     neckG.addColorStop(0, '#ff6622'); neckG.addColorStop(0.5, '#dd4400'); neckG.addColorStop(1, '#aa3300');
     ctx.fillStyle = neckG; ctx.fill();
     ctx.strokeStyle = 'rgba(80,12,0,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Neck ridge spines
+    for (let nr = 0; nr < 4; nr++) {
+        const t = nr / 3;
+        const nrX = x + 108 - t * 22;
+        const nrY = y + 28 + t * 52 + bo;
+        const nrH = 11 + nr * 2;
+        const nrG = ctx.createLinearGradient(nrX, nrY, nrX + 4, nrY - nrH);
+        nrG.addColorStop(0, '#3a2000'); nrG.addColorStop(1, '#0e0a04');
+        ctx.fillStyle = nrG;
+        ctx.beginPath();
+        ctx.moveTo(nrX - 4, nrY);
+        ctx.bezierCurveTo(nrX - 2, nrY - nrH * 0.5, nrX + 2, nrY - nrH * 0.95, nrX + 4, nrY - nrH);
+        ctx.bezierCurveTo(nrX + 7, nrY - nrH * 0.9, nrX + 6, nrY - nrH * 0.4, nrX + 4, nrY);
+        ctx.closePath(); ctx.fill();
+    }
 
     // ── LEGS ─────────────────────────────────────────────────────────
     const legSw = Math.sin(frame * 0.1) * 4;
@@ -1263,6 +1437,20 @@ function drawGigantamaxCharizard(ch) {
     ctx.beginPath(); ctx.ellipse(hx - 32, hy + 64, 6, 5, -0.3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(hx - 47, hy + 66, 6, 5, -0.3, 0, Math.PI * 2); ctx.fill();
 
+    // Dragon chin/jaw spikes
+    ctx.fillStyle = '#252520';
+    for (let cs = 0; cs < 3; cs++) {
+        const csx = hx - 28 - cs * 13;
+        const csy = hy + 88;
+        const csh = 15 - cs * 2;
+        ctx.beginPath();
+        ctx.moveTo(csx - 4, csy);
+        ctx.bezierCurveTo(csx - 3, csy + csh * 0.35, csx + 1, csy + csh, csx + 3, csy + csh);
+        ctx.bezierCurveTo(csx + 5, csy + csh, csx + 7, csy + csh * 0.35, csx + 5, csy);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#3a3a33';
+    }
+
     // Teal slit-pupil eyes (Charizard's iconic colour)
     for (let eye = 0; eye < 2; eye++) {
         const ex = hx + 28 + eye * 38, ey = hy + 30;
@@ -1281,10 +1469,19 @@ function drawGigantamaxCharizard(ch) {
     }
     ctx.shadowBlur = 0;
 
+    // Angry brows (slant inward = V shape = rage)
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#120800'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(hx + 16, hy + 20); ctx.lineTo(hx + 42, hy + 12); ctx.stroke(); // left brow
+    ctx.beginPath(); ctx.moveTo(hx + 56, hy + 12); ctx.lineTo(hx + 82, hy + 22); ctx.stroke(); // right brow
+    ctx.strokeStyle = '#3a1800'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(hx + 18, hy + 20); ctx.lineTo(hx + 41, hy + 14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hx + 57, hy + 14); ctx.lineTo(hx + 80, hy + 22); ctx.stroke();
+
     // Swept-back horns (bezier curves)
     const hornDefs = [
-        { bx: hx + 36, by: hy + 4, tipX: hx + 6,  tipY: hy - 52, w: 13 },
-        { bx: hx + 72, by: hy + 2, tipX: hx + 44, tipY: hy - 54, w: 13 },
+        { bx: hx + 36, by: hy + 4, tipX: hx - 2,  tipY: hy - 84, w: 17 },
+        { bx: hx + 72, by: hy + 2, tipX: hx + 38, tipY: hy - 88, w: 17 },
     ];
     for (const h of hornDefs) {
         const hornG = ctx.createLinearGradient(h.bx, h.by, h.tipX, h.tipY);
@@ -1341,10 +1538,28 @@ function drawGigantamaxCharizard(ch) {
             ctx.closePath(); ctx.fill();
         }
     } else {
-        ctx.strokeStyle = '#5e1000'; ctx.lineWidth = 2;
+        // Angry snarl — mouth slightly open, teeth showing
+        ctx.fillStyle = '#0e0000';
         ctx.beginPath();
         ctx.moveTo(hx + 4, hy + 68);
-        ctx.bezierCurveTo(hx - 22, hy + 72, hx - 48, hy + 73, hx - 66, hy + 70);
+        ctx.bezierCurveTo(hx - 14, hy + 72, hx - 44, hy + 75, hx - 64, hy + 72);
+        ctx.bezierCurveTo(hx - 66, hy + 68, hx - 58, hy + 65, hx - 44, hy + 64);
+        ctx.bezierCurveTo(hx - 26, hy + 63, hx - 4, hy + 63, hx + 4, hy + 68);
+        ctx.closePath(); ctx.fill();
+        // Snarl teeth
+        ctx.fillStyle = '#f0ece0';
+        for (let f = 0; f < 3; f++) {
+            const fx = hx - 6 - f * 16, fy = hy + 67;
+            ctx.beginPath();
+            ctx.moveTo(fx, fy); ctx.bezierCurveTo(fx - 2, fy + 5, fx - 1, fy + 10, fx + 3, fy + 10);
+            ctx.bezierCurveTo(fx + 7, fy + 10, fx + 7, fy + 5, fx + 5, fy);
+            ctx.closePath(); ctx.fill();
+        }
+        // Lip line
+        ctx.strokeStyle = '#5e1000'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(hx + 4, hy + 68);
+        ctx.bezierCurveTo(hx - 22, hy + 70, hx - 48, hy + 71, hx - 64, hy + 68);
         ctx.stroke();
     }
 
@@ -2222,9 +2437,20 @@ function gameLoop(timestamp) {
         ch.frame++;
         ch.lifespan--;
 
-        // Slide in from right, settle at canvas.width - 215
-        const targetX = canvas.width - 215;
-        if (ch.x > targetX) ch.x -= 3;
+        // Slide in from right, then prowl around dynamically
+        const baseX = canvas.width - 215;
+        if (ch.x > baseX + 5) {
+            ch.x -= 4;
+        } else {
+            // Sinusoidal patrol left/right and up/down
+            ch.x = baseX + Math.sin(ch.frame * 0.016) * 90;
+            ch.y = 18 + Math.sin(ch.frame * 0.022) * 55;
+            // Lunge toward player while attacking
+            if (ch.attackTimer > 30) {
+                ch.x += (player.x < ch.x ? -2 : 2);
+                ch.y += (player.y < ch.y ? -1.5 : 1.5);
+            }
+        }
 
         // Fireball attack timer
         ch.fireballTimer--;
@@ -2402,13 +2628,14 @@ function gameLoop(timestamp) {
 
         if (keys.shoot && shipLaserCooldown === 0) {
             const b = Math.sin(player.frame * 0.1) * 3;
-            const wingSpread = 18;
             // Cycle through 4 cannons for alternating fire
+            // Cannon tip x = x+134, cy = y+20, sp=38
+            // wing centres: y-24, y+1, y+41, y+64
             const cannonOffsets = [
-                { x: 66, y: -wingSpread - 1 },   // Top-left cannon
-                { x: 66, y: wingSpread + 23 },    // Bottom-left cannon
-                { x: 66, y: -wingSpread + 5 },    // Top-right cannon
-                { x: 66, y: wingSpread + 17 },    // Bottom-right cannon
+                { x: 134, y: -24 },  // top outer
+                { x: 134, y:  64 },  // bottom outer
+                { x: 130, y:   1 },  // top inner
+                { x: 130, y:  41 },  // bottom inner
             ];
             const cannon = cannonOffsets[shipLaserCannon % 4];
             shipLasers.push({
@@ -2425,9 +2652,9 @@ function gameLoop(timestamp) {
         // Draw ship with player
         drawShip(player.x, player.y, player.frame, true);
 
-        // Ship collision box is bigger
-        player.width = 70;
-        player.height = 50;
+        // Ship collision box
+        player.width = 105;
+        player.height = 88;
     } else {
         // === ROCKET BOOSTER LOGIC ===
         boosterActive = keys.shift && boosterFuel > 0;
@@ -2968,13 +3195,14 @@ document.addEventListener('keydown', (e) => {
 
     if (e.code === 'Space') {
         e.preventDefault();
-        if (gameRunning && !inShip) {
-            jump();
-        }
+        keys.shoot = true;  // Space fires lasers in all modes
     }
 
-    // Flying controls
-    if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
+    // Movement controls (arrows + WASD)
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        keys.up = true;
+        if (gameRunning && !inShip) jump();  // jump when on foot
+    }
     if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
@@ -2985,7 +3213,7 @@ document.addEventListener('keydown', (e) => {
         keys.shift = true;
     }
 
-    // Laser eyes
+    // F also fires as alternative
     if (e.code === 'KeyF') keys.shoot = true;
 
     // Enter/Exit ship with E
@@ -3019,7 +3247,7 @@ document.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
-    if (e.code === 'KeyF') keys.shoot = false;
+    if (e.code === 'Space' || e.code === 'KeyF') keys.shoot = false;
 });
 
 canvas.addEventListener('click', () => {
