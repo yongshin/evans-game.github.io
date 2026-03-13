@@ -72,7 +72,8 @@ const keys = {
     left: false,
     right: false,
     shift: false,
-    shoot: false
+    shoot: false,
+    dig: false
 };
 
 // Music system
@@ -901,43 +902,55 @@ function drawBlock(x, y, type) {
     ctx.strokeRect(x, y, size, size);
 }
 
-// Draw lava - gradient animated version
-function drawLava(x, width, frame) {
-    const lavaY = groundY + 40;
+// Draw burrow trench - exposed tunnel instead of lava
+function drawBurrowPit(x, width, frame) {
+    const tunnelY = groundY + 10;
+    const tunnelDepth = 52;
 
-    // Body gradient
-    const lG = ctx.createLinearGradient(0, lavaY, 0, lavaY + 40);
-    lG.addColorStop(0, '#ff4400'); lG.addColorStop(0.4, '#cc2200'); lG.addColorStop(1, '#880800');
-    ctx.fillStyle = lG; ctx.fillRect(x, lavaY, width, canvas.height - lavaY);
+    const wallG = ctx.createLinearGradient(0, groundY - 2, 0, tunnelY + tunnelDepth);
+    wallG.addColorStop(0, '#7b5528');
+    wallG.addColorStop(0.28, '#5b3a18');
+    wallG.addColorStop(1, '#231409');
+    ctx.fillStyle = wallG;
+    ctx.fillRect(x, groundY - 2, width, tunnelDepth + 8);
 
-    // Animated wave surface
-    ctx.beginPath(); ctx.moveTo(x, lavaY + 10);
+    ctx.beginPath();
+    ctx.moveTo(x, groundY + 6);
     for (let i = 0; i <= width; i += 8) {
-        ctx.lineTo(x + i, lavaY + 10 + Math.sin((frame * 0.12 + i * 0.1)) * 6);
+        const wobble = Math.sin(frame * 0.1 + i * 0.14) * 4;
+        ctx.lineTo(x + i, groundY + 7 + wobble);
     }
-    ctx.lineTo(x + width, lavaY); ctx.lineTo(x, lavaY); ctx.closePath();
-    const wG = ctx.createLinearGradient(0, lavaY - 2, 0, lavaY + 14);
-    wG.addColorStop(0, '#ff9900'); wG.addColorStop(0.5, '#ff5500'); wG.addColorStop(1, '#cc2200');
-    ctx.fillStyle = wG; ctx.fill();
+    ctx.lineTo(x + width, groundY + 26);
+    ctx.lineTo(x, groundY + 26);
+    ctx.closePath();
+    const roofG = ctx.createLinearGradient(0, groundY + 2, 0, groundY + 26);
+    roofG.addColorStop(0, '#9b6d34');
+    roofG.addColorStop(0.55, '#6e431a');
+    roofG.addColorStop(1, '#47280f');
+    ctx.fillStyle = roofG;
+    ctx.fill();
 
-    // Glowing bubbles
-    ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 12;
-    for (let i = 10; i < width; i += 25) {
-        const bOff = Math.sin((frame * 0.08 + i * 0.15)) * 4;
-        const bS = 4 + (i % 5);
-        const bG = ctx.createRadialGradient(x + i, lavaY + 18 + bOff, 0, x + i, lavaY + 18 + bOff, bS);
-        bG.addColorStop(0, '#ffff88'); bG.addColorStop(0.5, '#ffaa00'); bG.addColorStop(1, 'rgba(255,60,0,0)');
-        ctx.fillStyle = bG;
-        ctx.beginPath(); ctx.arc(x + i, lavaY + 18 + bOff, bS, 0, Math.PI * 2); ctx.fill();
+    const interiorG = ctx.createLinearGradient(0, tunnelY, 0, tunnelY + tunnelDepth);
+    interiorG.addColorStop(0, '#221307');
+    interiorG.addColorStop(0.4, '#120b04');
+    interiorG.addColorStop(1, '#050301');
+    ctx.fillStyle = interiorG;
+    ctx.fillRect(x + 6, tunnelY + 4, Math.max(0, width - 12), tunnelDepth - 10);
+
+    for (let i = 8; i < width - 8; i += 18) {
+        const dirtY = groundY + 8 + Math.sin(frame * 0.12 + i * 0.22) * 3;
+        ctx.fillStyle = i % 36 === 0 ? '#c99652' : '#8f6131';
+        ctx.beginPath();
+        ctx.ellipse(x + i, dirtY, 5, 3, 0.2, 0, Math.PI * 2);
+        ctx.fill();
     }
-    ctx.shadowBlur = 0;
 
-    // Glow above surface
-    const glowG = ctx.createLinearGradient(0, lavaY - 10, 0, lavaY + 8);
-    glowG.addColorStop(0, 'rgba(255,100,0,0)');
-    glowG.addColorStop(0.6, 'rgba(255,80,0,0.13)');
-    glowG.addColorStop(1, 'rgba(255,60,0,0)');
-    ctx.fillStyle = glowG; ctx.fillRect(x - 5, lavaY - 10, width + 10, 18);
+    const rimG = ctx.createLinearGradient(0, groundY - 8, 0, groundY + 8);
+    rimG.addColorStop(0, 'rgba(255,236,186,0)');
+    rimG.addColorStop(0.55, 'rgba(255,236,186,0.22)');
+    rimG.addColorStop(1, 'rgba(120,72,30,0)');
+    ctx.fillStyle = rimG;
+    ctx.fillRect(x - 4, groundY - 8, width + 8, 16);
 }
 
 // Draw fireball - radial gradient version
@@ -1148,8 +1161,8 @@ function drawGigantamaxCharizard(ch) {
     // ── LEFT WING (drawn behind body) ──────────────────────────────────
     const lwX = x + 82, lwY = y + 108 + bo;
     const lwG = ctx.createLinearGradient(lwX - 175, lwY - 60 + wf, lwX + 10, lwY + 110);
-    lwG.addColorStop(0, '#0b0400'); lwG.addColorStop(0.3, '#3a1100');
-    lwG.addColorStop(0.65, '#882200'); lwG.addColorStop(1, '#cc4400');
+    lwG.addColorStop(0, '#050402'); lwG.addColorStop(0.32, '#1b120d');
+    lwG.addColorStop(0.68, '#4a1208'); lwG.addColorStop(1, '#d64e10');
     ctx.fillStyle = lwG;
     ctx.beginPath();
     ctx.moveTo(lwX, lwY - 22);
@@ -1159,7 +1172,7 @@ function drawGigantamaxCharizard(ch) {
     ctx.closePath(); ctx.fill();
     // Membrane shimmer
     const lwHL = ctx.createRadialGradient(lwX - 85, lwY + 55, 5, lwX - 85, lwY + 55, 90);
-    lwHL.addColorStop(0, 'rgba(220,90,20,0.18)'); lwHL.addColorStop(1, 'rgba(0,0,0,0)');
+    lwHL.addColorStop(0, 'rgba(255,110,30,0.24)'); lwHL.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = lwHL;
     ctx.beginPath();
     ctx.moveTo(lwX, lwY - 22);
@@ -1168,7 +1181,7 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(lwX - 85, lwY + 188, lwX - 32, lwY + 178, lwX, lwY + 142);
     ctx.closePath(); ctx.fill();
     // Wing finger bones
-    ctx.strokeStyle = '#1e0800'; ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#120b07'; ctx.lineWidth = 3.5;
     ctx.beginPath(); // main arm bone
     ctx.moveTo(lwX, lwY);
     ctx.bezierCurveTo(lwX - 55, lwY - 28 + wf * 0.5, lwX - 120, lwY - 40 + wf, lwX - 168, lwY - 36 + wf);
@@ -1185,13 +1198,13 @@ function drawGigantamaxCharizard(ch) {
     // ── TAIL ──────────────────────────────────────────────────────────
     // Draw as a thick stroked bezier that tapers
     const tSX = x + 148, tSY = y + 242 + bo;
-    ctx.lineWidth = 24; ctx.strokeStyle = '#cc4400';
+    ctx.lineWidth = 24; ctx.strokeStyle = '#31150b';
     ctx.beginPath();
     ctx.moveTo(tSX, tSY);
     ctx.bezierCurveTo(tSX + 38, tSY + 38, tSX + 72, tSY + 62, tSX + 78, tSY + 102);
     ctx.bezierCurveTo(tSX + 82, tSY + 132, tSX + 64, tSY + 158, tSX + 52, tSY + 172);
     ctx.stroke();
-    ctx.lineWidth = 10; ctx.strokeStyle = '#ff7722';
+    ctx.lineWidth = 10; ctx.strokeStyle = '#a63610';
     ctx.beginPath();
     ctx.moveTo(tSX - 5, tSY + 2);
     ctx.bezierCurveTo(tSX + 32, tSY + 34, tSX + 64, tSY + 56, tSX + 68, tSY + 97);
@@ -1200,7 +1213,7 @@ function drawGigantamaxCharizard(ch) {
     {
         const spX = tSX + 52, spY = tSY + 152;
         const spadeG = ctx.createRadialGradient(spX, spY + 8, 2, spX, spY + 14, 26);
-        spadeG.addColorStop(0, '#ee5511'); spadeG.addColorStop(0.5, '#cc3300'); spadeG.addColorStop(1, '#7a1500');
+        spadeG.addColorStop(0, '#f36b20'); spadeG.addColorStop(0.5, '#8e2608'); spadeG.addColorStop(1, '#2e0d04');
         ctx.fillStyle = spadeG;
         ctx.beginPath();
         ctx.moveTo(spX, spY - 10);                                             // top notch
@@ -1250,10 +1263,10 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(x + 205, y + 140 + bo, x + 190, y + 106 + bo, x + 155, y + 92 + bo);
     ctx.bezierCurveTo(x + 128, y + 82 + bo, x + 86, y + 82 + bo, x + 58, y + 98 + bo);
     const bodyG = ctx.createRadialGradient(x + 112, y + 142 + bo, 14, x + 115, y + 158 + bo, 90);
-    bodyG.addColorStop(0, '#ff7733'); bodyG.addColorStop(0.38, '#ee5511');
-    bodyG.addColorStop(0.72, '#cc3200'); bodyG.addColorStop(1, '#7a1a00');
+    bodyG.addColorStop(0, '#5a2410'); bodyG.addColorStop(0.34, '#24130b');
+    bodyG.addColorStop(0.72, '#120d09'); bodyG.addColorStop(1, '#040302');
     ctx.fillStyle = bodyG; ctx.fill();
-    ctx.strokeStyle = 'rgba(50,8,0,0.55)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,110,35,0.22)'; ctx.lineWidth = 2.5; ctx.stroke();
     // Belly plate
     ctx.beginPath();
     ctx.moveTo(x + 78, y + 118 + bo);
@@ -1262,19 +1275,28 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(x + 175, y + 230 + bo, x + 170, y + 176 + bo, x + 156, y + 130 + bo);
     ctx.bezierCurveTo(x + 146, y + 105 + bo, x + 118, y + 98 + bo, x + 78, y + 118 + bo);
     const bellyG = ctx.createLinearGradient(x + 78, y + 108 + bo, x + 168, y + 265 + bo);
-    bellyG.addColorStop(0, '#f0c880'); bellyG.addColorStop(0.45, '#e8a848'); bellyG.addColorStop(1, '#c07228');
+    bellyG.addColorStop(0, '#f5e8c2'); bellyG.addColorStop(0.5, '#e8d2a2'); bellyG.addColorStop(1, '#c79c54');
     ctx.fillStyle = bellyG; ctx.fill();
-    // Belly scale arcs
-    ctx.strokeStyle = 'rgba(140,75,15,0.28)'; ctx.lineWidth = 1;
-    for (let row = 0; row < 7; row++) {
-        for (let col = 0; col < 3 + (row % 2); col++) {
-            const sx = x + 85 + col * 18 - (row % 2) * 9;
-            const sy = y + 128 + row * 20 + bo;
-            ctx.beginPath(); ctx.arc(sx, sy, 9, 0.25, Math.PI - 0.25); ctx.stroke();
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 2; col++) {
+            const cx = x + 104 + col * 28 + (row % 2) * 8;
+            const cy = y + 142 + row * 30 + bo;
+            const diamondG = ctx.createRadialGradient(cx, cy, 0, cx, cy, 14);
+            diamondG.addColorStop(0, 'rgba(255,245,180,0.95)');
+            diamondG.addColorStop(0.5, 'rgba(255,182,56,0.78)');
+            diamondG.addColorStop(1, 'rgba(255,100,0,0)');
+            ctx.fillStyle = diamondG;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - 12);
+            ctx.lineTo(cx + 10, cy);
+            ctx.lineTo(cx, cy + 12);
+            ctx.lineTo(cx - 10, cy);
+            ctx.closePath();
+            ctx.fill();
         }
     }
     // Body scale texture (shoulder/back)
-    ctx.strokeStyle = 'rgba(80,12,0,0.22)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,120,40,0.18)'; ctx.lineWidth = 1;
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
             const sx = x + 28 + col * 22 + (row % 2) * 11;
@@ -1282,6 +1304,27 @@ function drawGigantamaxCharizard(ch) {
             ctx.beginPath(); ctx.arc(sx, sy, 10, 0.3, Math.PI - 0.3); ctx.stroke();
         }
     }
+
+    ctx.shadowColor = '#ff6600';
+    ctx.shadowBlur = 18;
+    for (let flare = 0; flare < 2; flare++) {
+        const fx = flare === 0 ? x + 58 : x + 168;
+        const dir = flare === 0 ? -1 : 1;
+        const fy = y + 116 + bo;
+        const flareG = ctx.createRadialGradient(fx, fy, 0, fx, fy, 26);
+        flareG.addColorStop(0, '#fff4a8');
+        flareG.addColorStop(0.38, '#ffb12f');
+        flareG.addColorStop(0.75, '#ff5d10');
+        flareG.addColorStop(1, 'rgba(255,60,0,0)');
+        ctx.fillStyle = flareG;
+        ctx.beginPath();
+        ctx.moveTo(fx - 7, fy + 8);
+        ctx.quadraticCurveTo(fx + dir * 4, fy - 24, fx + dir * 12, fy - 10);
+        ctx.quadraticCurveTo(fx + dir * 18, fy - 2, fx + dir * 12, fy + 12);
+        ctx.closePath();
+        ctx.fill();
+    }
+    ctx.shadowBlur = 0;
 
     // ── DORSAL SPINES (along back ridge) ─────────────────────────────
     const spineCount = 6;
@@ -1317,7 +1360,7 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(x + 112, y + 88 + bo, x + 100, y + 96 + bo, x + 88, y + 98 + bo);
     ctx.closePath();
     const neckG = ctx.createLinearGradient(x + 52, y + 18 + bo, x + 118, y + 98 + bo);
-    neckG.addColorStop(0, '#ff6622'); neckG.addColorStop(0.5, '#dd4400'); neckG.addColorStop(1, '#aa3300');
+    neckG.addColorStop(0, '#662713'); neckG.addColorStop(0.48, '#29160d'); neckG.addColorStop(1, '#0b0805');
     ctx.fillStyle = neckG; ctx.fill();
     ctx.strokeStyle = 'rgba(80,12,0,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
     // Neck ridge spines
@@ -1404,8 +1447,8 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(hx + 103, hy + 60, hx + 90, hy + 72, hx + 76, hy + 74);
     ctx.closePath();
     const skullG = ctx.createRadialGradient(hx + 52, hy + 22, 6, hx + 56, hy + 34, 58);
-    skullG.addColorStop(0, '#ff8844'); skullG.addColorStop(0.4, '#ee5511');
-    skullG.addColorStop(0.78, '#cc3200'); skullG.addColorStop(1, '#7a1a00');
+    skullG.addColorStop(0, '#662813'); skullG.addColorStop(0.4, '#26130b');
+    skullG.addColorStop(0.78, '#120c08'); skullG.addColorStop(1, '#050302');
     ctx.fillStyle = skullG; ctx.fill();
     ctx.strokeStyle = 'rgba(55,8,0,0.45)'; ctx.lineWidth = 2; ctx.stroke();
     // Upper snout
@@ -1417,7 +1460,7 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(hx - 14, hy + 78, hx + 4, hy + 74, hx + 12, hy + 68);
     ctx.closePath();
     const snoutG = ctx.createLinearGradient(hx - 70, hy + 58, hx + 14, hy + 72);
-    snoutG.addColorStop(0, '#bb2e00'); snoutG.addColorStop(0.5, '#dd4400'); snoutG.addColorStop(1, '#ee5511');
+    snoutG.addColorStop(0, '#2a140b'); snoutG.addColorStop(0.5, '#120c07'); snoutG.addColorStop(1, '#5f230d');
     ctx.fillStyle = snoutG; ctx.fill();
     ctx.strokeStyle = 'rgba(55,8,0,0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
     // Lower jaw
@@ -1429,7 +1472,7 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(hx - 34, hy + 62, hx - 14, hy + 62, hx + 6, hy + 64);
     ctx.closePath();
     const jawG = ctx.createLinearGradient(hx - 68, hy + 68, hx + 10, hy + 86);
-    jawG.addColorStop(0, '#8a1e00'); jawG.addColorStop(1, '#bb3300');
+    jawG.addColorStop(0, '#160d08'); jawG.addColorStop(1, '#53200f');
     ctx.fillStyle = jawG; ctx.fill();
     ctx.strokeStyle = 'rgba(55,8,0,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
     // Nostrils
@@ -1451,17 +1494,17 @@ function drawGigantamaxCharizard(ch) {
         ctx.fillStyle = '#3a3a33';
     }
 
-    // Teal slit-pupil eyes (Charizard's iconic colour)
+    // Bright yellow eyes and ember pupils to match Gigantamax art.
     for (let eye = 0; eye < 2; eye++) {
         const ex = hx + 28 + eye * 38, ey = hy + 30;
-        ctx.shadowColor = '#00ffdd'; ctx.shadowBlur = 16;
+        ctx.shadowColor = '#ffbb33'; ctx.shadowBlur = 16;
         const eyeRimG = ctx.createRadialGradient(ex, ey, 0, ex, ey, 14);
-        eyeRimG.addColorStop(0, '#aafff0'); eyeRimG.addColorStop(0.45, '#22ccaa');
-        eyeRimG.addColorStop(0.8, '#006655'); eyeRimG.addColorStop(1, '#002222');
+        eyeRimG.addColorStop(0, '#fff4b8'); eyeRimG.addColorStop(0.45, '#ffc933');
+        eyeRimG.addColorStop(0.8, '#8f4f00'); eyeRimG.addColorStop(1, '#301600');
         ctx.fillStyle = eyeRimG;
         ctx.beginPath(); ctx.ellipse(ex, ey, 14, 12, 0, 0, Math.PI * 2); ctx.fill();
         // Slit pupil
-        ctx.shadowBlur = 0; ctx.fillStyle = '#000f0e';
+        ctx.shadowBlur = 0; ctx.fillStyle = '#2a0900';
         ctx.beginPath(); ctx.ellipse(ex, ey, 4, 11, 0, 0, Math.PI * 2); ctx.fill();
         // Highlight
         ctx.fillStyle = 'rgba(255,255,255,0.65)';
@@ -1485,7 +1528,7 @@ function drawGigantamaxCharizard(ch) {
     ];
     for (const h of hornDefs) {
         const hornG = ctx.createLinearGradient(h.bx, h.by, h.tipX, h.tipY);
-        hornG.addColorStop(0, '#5a5a5a'); hornG.addColorStop(0.6, '#2e2e2e'); hornG.addColorStop(1, '#0e0e0e');
+        hornG.addColorStop(0, '#d8d2b8'); hornG.addColorStop(0.6, '#8f8874'); hornG.addColorStop(1, '#2c241b');
         ctx.fillStyle = hornG;
         ctx.beginPath();
         ctx.moveTo(h.bx - h.w / 2, h.by);
@@ -1498,6 +1541,16 @@ function drawGigantamaxCharizard(ch) {
         ctx.bezierCurveTo(h.bx - 5, h.by - 18, h.tipX - 3, h.tipY + 16, h.tipX, h.tipY + 6);
         ctx.bezierCurveTo(h.tipX + 1, h.tipY + 12, h.bx + 1, h.by - 14, h.bx + 2, h.by - 2);
         ctx.closePath(); ctx.fill();
+        const hornFlame = ctx.createRadialGradient(h.tipX, h.tipY + 4, 0, h.tipX, h.tipY + 4, 16);
+        hornFlame.addColorStop(0, 'rgba(255,250,180,0.95)');
+        hornFlame.addColorStop(0.45, 'rgba(255,176,45,0.75)');
+        hornFlame.addColorStop(1, 'rgba(255,60,0,0)');
+        ctx.fillStyle = hornFlame;
+        ctx.beginPath();
+        ctx.moveTo(h.tipX - 5, h.tipY + 8);
+        ctx.quadraticCurveTo(h.tipX, h.tipY - 14, h.tipX + 6, h.tipY + 8);
+        ctx.closePath();
+        ctx.fill();
     }
     // Smaller side ridges
     for (let sr = 0; sr < 2; sr++) {
@@ -1566,7 +1619,7 @@ function drawGigantamaxCharizard(ch) {
     // ── RIGHT WING (front) ────────────────────────────────────────────
     const rwX = x + 122, rwY = y + 108 + bo;
     const rwG = ctx.createLinearGradient(rwX, rwY - 20, rwX + 188, rwY + 105);
-    rwG.addColorStop(0, '#882200'); rwG.addColorStop(0.35, '#3a1100'); rwG.addColorStop(1, '#0b0400');
+    rwG.addColorStop(0, '#d64e10'); rwG.addColorStop(0.35, '#4a1208'); rwG.addColorStop(1, '#050402');
     ctx.fillStyle = rwG;
     ctx.beginPath();
     ctx.moveTo(rwX, rwY - 22);
@@ -1576,7 +1629,7 @@ function drawGigantamaxCharizard(ch) {
     ctx.closePath(); ctx.fill();
     // Right wing shimmer
     const rwHL = ctx.createRadialGradient(rwX + 88, rwY + 52, 5, rwX + 88, rwY + 52, 88);
-    rwHL.addColorStop(0, 'rgba(220,90,20,0.2)'); rwHL.addColorStop(1, 'rgba(0,0,0,0)');
+    rwHL.addColorStop(0, 'rgba(255,110,30,0.26)'); rwHL.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = rwHL;
     ctx.beginPath();
     ctx.moveTo(rwX, rwY - 22);
@@ -1584,7 +1637,7 @@ function drawGigantamaxCharizard(ch) {
     ctx.bezierCurveTo(rwX + 198, rwY - 4 - wf * 0.5, rwX + 188, rwY + 60, rwX + 150, rwY + 128);
     ctx.bezierCurveTo(rwX + 96, rwY + 186, rwX + 34, rwY + 174, rwX, rwY + 142);
     ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#1e0800'; ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#120b07'; ctx.lineWidth = 3.5;
     ctx.beginPath();
     ctx.moveTo(rwX, rwY);
     ctx.bezierCurveTo(rwX + 58, rwY - 32 - wf * 0.45, rwX + 128, rwY - 45 - wf, rwX + 178, rwY - 46 - wf);
@@ -1597,7 +1650,7 @@ function drawGigantamaxCharizard(ch) {
         ctx.quadraticCurveTo(bx + 26, by + 52 + f * 18, rwX + 98 + f * 22, rwY + 82 + f * 26);
         ctx.stroke();
     }
-    ctx.strokeStyle = 'rgba(210,80,20,0.28)'; ctx.lineWidth = 1.8;
+    ctx.strokeStyle = 'rgba(255,140,40,0.35)'; ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(rwX, rwY - 22);
     ctx.bezierCurveTo(rwX + 52, rwY - 68 - wf * 0.6, rwX + 128, rwY - 84 - wf, rwX + 178, rwY - 48 - wf);
@@ -1753,41 +1806,38 @@ function drawHyperBeam(beam) {
     ctx.fillRect(beam.x, beam.y + 22, beam.width, 12);
 }
 
-// Ember particle system - spawns from lava pits and floats upward
+// Dust particles drifting out of burrow trenches
 function updateEmbers() {
-    // Spawn new embers from lava pits
     for (const pit of lavaPits) {
         if (pit.x > -10 && pit.x < canvas.width && Math.random() < 0.35) {
             const maxLife = 50 + Math.random() * 40;
             embers.push({
                 x: pit.x + Math.random() * pit.width,
-                y: groundY + 28,
-                vx: -1.2 + Math.random() * 2.4,
-                vy: -(1.8 + Math.random() * 3.5),
+                y: groundY + 14,
+                vx: -0.8 + Math.random() * 1.6,
+                vy: -(0.8 + Math.random() * 1.8),
                 life: maxLife,
                 maxLife: maxLife,
                 size: 1.5 + Math.random() * 2.5
             });
         }
     }
-    // Update and draw embers
     for (let i = embers.length - 1; i >= 0; i--) {
         const e = embers[i];
         e.x += e.vx;
         e.y += e.vy;
-        e.vy -= 0.04;
-        e.vx *= 0.99;
+        e.vy *= 0.98;
+        e.vx *= 0.97;
         e.life--;
         if (e.life <= 0) { embers.splice(i, 1); continue; }
         const alpha = e.life / e.maxLife;
         const eG = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size * 1.4);
-        eG.addColorStop(0, `rgba(255,240,100,${alpha})`);
-        eG.addColorStop(0.5, `rgba(255,120,0,${alpha * 0.7})`);
-        eG.addColorStop(1, 'rgba(255,50,0,0)');
+        eG.addColorStop(0, `rgba(231,205,152,${alpha})`);
+        eG.addColorStop(0.55, `rgba(171,123,67,${alpha * 0.72})`);
+        eG.addColorStop(1, 'rgba(95,61,29,0)');
         ctx.fillStyle = eG;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 1.4, 0, Math.PI * 2); ctx.fill();
     }
-    // Cap embers count
     if (embers.length > 250) embers.splice(0, embers.length - 250);
 }
 
@@ -1851,11 +1901,16 @@ const player = {
     y: groundY - 54,
     width: 30,
     height: 54,
+    baseWidth: 30,
+    baseHeight: 54,
+    burrowHeight: 18,
     velocityY: 0,
     jumping: false,
     jumpCount: 0,
     maxJumps: 2,
-    frame: 0
+    frame: 0,
+    digDepth: 0,
+    underground: false
 };
 
 // Skeleton (chaser) with dynamic movement
@@ -2079,11 +2134,16 @@ function checkCollision(rect1, rect2) {
            rect1.y + rect1.height > rect2.y;
 }
 
-function checkLavaCollision() {
+function playerIsUnderground() {
+    return !inShip && player.underground;
+}
+
+function checkPitCollision() {
     for (let pit of lavaPits) {
         if (player.x + player.width > pit.x &&
             player.x < pit.x + pit.width &&
-            player.y + player.height >= groundY) {
+            player.y + player.height >= groundY &&
+            !playerIsUnderground()) {
             return true;
         }
     }
@@ -2091,15 +2151,59 @@ function checkLavaCollision() {
 }
 
 function checkSkeletonCatch() {
+    if (playerIsUnderground()) return false;
     return skeleton.x + skeleton.width >= player.x;
 }
 
 // Jump
 function jump() {
-    if (player.jumpCount < player.maxJumps) {
+    if (player.jumpCount < player.maxJumps && !playerIsUnderground() && player.digDepth < 0.15) {
         player.velocityY = -15;
         player.jumping = true;
         player.jumpCount++;
+    }
+}
+
+function drawBurrowingPlayer(playerObj) {
+    const sink = playerObj.digDepth * 30;
+    const exposed = Math.max(0.08, 1 - playerObj.digDepth);
+    const drawY = groundY - playerObj.baseHeight + sink;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(playerObj.x - 10, groundY - playerObj.baseHeight * exposed - 12, playerObj.baseWidth + 24, canvas.height);
+    ctx.clip();
+    drawZombie(playerObj.x, drawY, playerObj.frame);
+    ctx.restore();
+
+    const moundX = playerObj.x + playerObj.baseWidth * 0.5;
+    const moundY = groundY + 4;
+    const moundW = 18 + playerObj.digDepth * 22;
+    const moundH = 8 + playerObj.digDepth * 10;
+    const moundG = ctx.createLinearGradient(moundX, moundY - moundH, moundX, moundY + moundH);
+    moundG.addColorStop(0, '#b58346');
+    moundG.addColorStop(0.45, '#7d542a');
+    moundG.addColorStop(1, '#4c2f15');
+    ctx.fillStyle = moundG;
+    ctx.beginPath();
+    ctx.ellipse(moundX, moundY, moundW, moundH, 0, Math.PI, 0, true);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,232,180,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(moundX - 5, moundY - 2, moundW * 0.52, moundH * 0.45, -0.2, Math.PI, 0, true);
+    ctx.closePath();
+    ctx.fill();
+
+    if (playerObj.digDepth > 0.55) {
+        ctx.fillStyle = '#e9ddbf';
+        ctx.beginPath();
+        ctx.ellipse(playerObj.x + 23, groundY - 4, 4, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#3a2412';
+        ctx.fillRect(playerObj.x + 21, groundY - 5, 1, 1);
+        ctx.fillRect(playerObj.x + 24, groundY - 5, 1, 1);
     }
 }
 
@@ -2198,24 +2302,10 @@ function gameLoop(timestamp) {
         lastGyaradosSpawnTime = timestamp;
     }
 
-    // Update and draw lava pits
+    // Update and draw burrow trenches
     for (let i = lavaPits.length - 1; i >= 0; i--) {
         lavaPits[i].x -= gameSpeed;
-        drawLava(lavaPits[i].x, lavaPits[i].width, frameCount);
-
-        // Lava shoots fireballs!
-        if (frameCount % 90 === 0 && lavaPits[i].x > 0 && lavaPits[i].x < canvas.width) {
-            const spawnX = lavaPits[i].x + Math.random() * lavaPits[i].width;
-            fireballs.push({
-                x: spawnX,
-                y: groundY + 30,
-                width: 16,
-                height: 16,
-                velocityX: -1 + Math.random() * 2,
-                velocityY: -(8 + Math.random() * 6),
-                frame: 0
-            });
-        }
+        drawBurrowPit(lavaPits[i].x, lavaPits[i].width, frameCount);
 
         if (lavaPits[i].x + lavaPits[i].width < 0) {
             lavaPits.splice(i, 1);
@@ -2238,7 +2328,7 @@ function gameLoop(timestamp) {
         }
 
         // Fireball hits player
-        if (!inShip && checkCollision(fb, player)) {
+        if (!inShip && !playerIsUnderground() && checkCollision(fb, player)) {
             playerHealth -= 10;
             damageFlash = 15;
             fireballs.splice(i, 1);
@@ -2506,7 +2596,7 @@ function gameLoop(timestamp) {
             continue;
         }
         // Hit player on foot
-        if (!inShip && checkCollision(fb, player)) {
+        if (!inShip && !playerIsUnderground() && checkCollision(fb, player)) {
             playerHealth -= 20;
             damageFlash = 20;
             screenShake = 10;
@@ -2571,7 +2661,7 @@ function gameLoop(timestamp) {
         // Body collision while rising/falling (hit the head area)
         const gyrHitbox = { x: gyr.x - 38, y: gyr.y, width: 82, height: 65 };
         if (checkCollision(gyrHitbox, player)) {
-            if (!inShip) {
+            if (!inShip && !playerIsUnderground()) {
                 playerHealth -= 15;
                 damageFlash = 18;
                 player.velocityY = -12;
@@ -2589,7 +2679,7 @@ function gameLoop(timestamp) {
 
         // Damage player caught in beam
         const beamHitbox = { x: beam.x, y: beam.y - 22, width: beam.width, height: 44 };
-        if (!inShip && checkCollision(beamHitbox, player)) {
+        if (!inShip && !playerIsUnderground() && checkCollision(beamHitbox, player)) {
             playerHealth -= 0.9;
             damageFlash = 5;
             if (playerHealth <= 0) { endGame(); return; }
@@ -2657,7 +2747,7 @@ function gameLoop(timestamp) {
         player.height = 88;
     } else {
         // === ROCKET BOOSTER LOGIC ===
-        boosterActive = keys.shift && boosterFuel > 0;
+        boosterActive = keys.shift && boosterFuel > 0 && !playerIsUnderground() && player.digDepth < 0.15;
         if (boosterActive) {
             player.velocityY -= 1.8; // Thrust upward
             if (player.velocityY < -10) player.velocityY = -10; // Cap upward speed
@@ -2677,12 +2767,12 @@ function gameLoop(timestamp) {
         player.y += player.velocityY;
 
         // Reset player size
-        player.width = 30;
-        player.height = 54;
+        player.width = player.baseWidth;
+        player.height = player.baseHeight;
 
         // Ground collision
         let onGround = false;
-        let overLava = false;
+        let overPit = false;
         let onBlock = false;
 
         // Check if player can land on blocks (platforms)
@@ -2706,21 +2796,41 @@ function gameLoop(timestamp) {
 
         for (let pit of lavaPits) {
             if (player.x + player.width > pit.x && player.x < pit.x + pit.width) {
-                overLava = true;
+                overPit = true;
                 break;
             }
         }
 
-        if (!onBlock && !overLava && player.y + player.height >= groundY) {
-            player.y = groundY - player.height;
+        if (!onBlock && !overPit && player.y + player.height >= groundY) {
+            player.y = groundY - player.baseHeight;
             player.velocityY = 0;
             player.jumping = false;
             player.jumpCount = 0;
             onGround = true;
         }
 
+        const canBurrow = onGround && !onBlock;
+        const forcedBurrow = player.digDepth > 0.08 && overPit;
+        const wantsDig = (keys.dig && canBurrow) || forcedBurrow;
+
+        if (wantsDig) {
+            player.digDepth = Math.min(1, player.digDepth + 0.18);
+        } else {
+            player.digDepth = Math.max(0, player.digDepth - 0.18);
+        }
+        player.underground = player.digDepth >= 0.62;
+
+        if (player.digDepth > 0) {
+            const burrowHeightDelta = player.baseHeight - player.burrowHeight;
+            player.height = player.baseHeight - burrowHeightDelta * player.digDepth;
+            player.y = groundY - player.baseHeight + player.digDepth * 30;
+            player.velocityY = 0;
+            player.jumping = false;
+            player.jumpCount = 0;
+        }
+
         // Recharge booster fuel when on ground and not boosting
-        if (onGround && !boosterActive) {
+        if (onGround && !boosterActive && !playerIsUnderground()) {
             boosterFuel += 0.3;
             if (boosterFuel > maxBoosterFuel) boosterFuel = maxBoosterFuel;
         }
@@ -2732,7 +2842,7 @@ function gameLoop(timestamp) {
         // === LASER EYES LOGIC ===
         if (laserCooldown > 0) laserCooldown--;
 
-        if (keys.shoot && laserCooldown === 0) {
+        if (keys.shoot && laserCooldown === 0 && !playerIsUnderground()) {
             const bobOffset = Math.sin(player.frame * 0.3) * 2;
             // Fire two lasers from each eye
             lasers.push({
@@ -2757,7 +2867,11 @@ function gameLoop(timestamp) {
         document.getElementById('laserStatus').style.color = laserCooldown === 0 ? '#ff4444' : '#884444';
 
         // Draw player
-        drawZombie(player.x, player.y, player.frame);
+        if (player.digDepth > 0.02) {
+            drawBurrowingPlayer(player);
+        } else {
+            drawZombie(player.x, player.y, player.frame);
+        }
     }
 
     // === UPDATE AND DRAW LASERS ===
@@ -2988,7 +3102,7 @@ function gameLoop(timestamp) {
 
     // Check collision with enemy skeletons
     for (let i = enemySkeletons.length - 1; i >= 0; i--) {
-        if (checkCollision(player, enemySkeletons[i])) {
+        if (!playerIsUnderground() && checkCollision(player, enemySkeletons[i])) {
             if (inShip) {
                 // Destroy skeleton!
                 enemySkeletons.splice(i, 1);
@@ -3003,7 +3117,7 @@ function gameLoop(timestamp) {
 
     // Check collision with Hulks
     for (let i = hulks.length - 1; i >= 0; i--) {
-        if (checkCollision(player, hulks[i])) {
+        if (!playerIsUnderground() && checkCollision(player, hulks[i])) {
             if (inShip) {
                 // HULK SMASH! Destroys the X-Wing and forces player out!
                 if (hulks[i].smashCooldown <= 0) {
@@ -3011,10 +3125,12 @@ function gameLoop(timestamp) {
                     hulks[i].smashCooldown = 60;
                     inShip = false;
                     document.getElementById('fuelDisplay').style.display = 'none';
-                    player.y = groundY - 54;
-                    player.width = 30;
-                    player.height = 54;
+                    player.y = groundY - player.baseHeight;
+                    player.width = player.baseWidth;
+                    player.height = player.baseHeight;
                     player.velocityY = -12; // Knocked upward
+                    player.digDepth = 0;
+                    player.underground = false;
                     playerHealth -= 20; // 20% damage
                     damageFlash = 20;
                     screenShake = 25;
@@ -3045,8 +3161,7 @@ function gameLoop(timestamp) {
         }
     }
 
-    // Lava only kills if not in ship or very low
-    if (!inShip && checkLavaCollision()) {
+    if (!inShip && checkPitCollision()) {
         endGame();
         return;
     }
@@ -3089,7 +3204,7 @@ function gameLoop(timestamp) {
     score++;
     document.getElementById('score').textContent = score;
 
-    // Ember particles from lava
+    // Dust particles from trenches
     updateEmbers();
 
     ctx.restore(); // End screen shake transform
@@ -3112,12 +3227,14 @@ function startGame() {
     shipFuel = maxShipFuel;
 
     player.x = 150;
-    player.y = groundY - player.height;
-    player.width = 30;
-    player.height = 54;
+    player.y = groundY - player.baseHeight;
+    player.width = player.baseWidth;
+    player.height = player.baseHeight;
     player.velocityY = 0;
     player.jumping = false;
     player.jumpCount = 0;
+    player.digDepth = 0;
+    player.underground = false;
 
     // Reset health and state
     playerHealth = maxPlayerHealth;
@@ -3195,7 +3312,7 @@ document.addEventListener('keydown', (e) => {
 
     if (e.code === 'Space') {
         e.preventDefault();
-        keys.shoot = true;  // Space fires lasers in all modes
+        if (gameRunning && !inShip) keys.dig = true;
     }
 
     // Movement controls (arrows + WASD)
@@ -3235,8 +3352,10 @@ document.addEventListener('keydown', (e) => {
             // Exit ship
             inShip = false;
             document.getElementById('fuelDisplay').style.display = 'none';
-            player.y = groundY - 54;
+            player.y = groundY - player.baseHeight;
             player.velocityY = 0;
+            player.digDepth = 0;
+            player.underground = false;
         }
     }
 });
@@ -3247,11 +3366,12 @@ document.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
-    if (e.code === 'Space' || e.code === 'KeyF') keys.shoot = false;
+    if (e.code === 'Space') keys.dig = false;
+    if (e.code === 'KeyF') keys.shoot = false;
 });
 
 canvas.addEventListener('click', () => {
-    if (gameRunning && !inShip) {
+    if (gameRunning && !inShip && !playerIsUnderground()) {
         jump();
     }
 });
@@ -3263,5 +3383,5 @@ document.getElementById('musicBtn').addEventListener('click', toggleMusic);
 // Initial draw
 drawBackground();
 drawGround(0);
-drawZombie(player.x, groundY - 54, 0);
+drawZombie(player.x, groundY - player.baseHeight, 0);
 drawSkeleton(skeleton.x, groundY - 54, 0);
