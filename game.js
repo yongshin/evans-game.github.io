@@ -1459,32 +1459,68 @@ function drawGigantamaxCharizard(ch) {
     ctx.strokeStyle = 'rgba(55,8,0,0.45)'; ctx.lineWidth = 2; ctx.stroke();
     // Upper snout
     ctx.beginPath();
-    ctx.moveTo(hx + 12, hy + 52);
-    ctx.bezierCurveTo(hx + 2, hy + 50, hx - 18, hy + 54, hx - 42, hy + 58);
-    ctx.bezierCurveTo(hx - 58, hy + 60, hx - 68, hy + 66, hx - 70, hy + 72);
-    ctx.bezierCurveTo(hx - 66, hy + 80, hx - 50, hy + 82, hx - 32, hy + 80);
-    ctx.bezierCurveTo(hx - 14, hy + 78, hx + 4, hy + 74, hx + 12, hy + 68);
+    ctx.moveTo(hx + 14, hy + 50);
+    ctx.bezierCurveTo(hx + 4, hy + 42, hx - 14, hy + 41, hx - 36, hy + 46);
+    ctx.bezierCurveTo(hx - 59, hy + 50, hx - 78, hy + 58, hx - 86, hy + 69);
+    ctx.bezierCurveTo(hx - 84, hy + 81, hx - 67, hy + 86, hx - 44, hy + 84);
+    ctx.bezierCurveTo(hx - 16, hy + 81, hx + 5, hy + 76, hx + 12, hy + 67);
     ctx.closePath();
-    const snoutG = ctx.createLinearGradient(hx - 70, hy + 58, hx + 14, hy + 72);
-    snoutG.addColorStop(0, '#2a140b'); snoutG.addColorStop(0.5, '#120c07'); snoutG.addColorStop(1, '#5f230d');
-    ctx.fillStyle = snoutG; ctx.fill();
-    ctx.strokeStyle = 'rgba(55,8,0,0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+    const snoutG = ctx.createLinearGradient(hx - 86, hy + 48, hx + 18, hy + 76);
+    snoutG.addColorStop(0, '#8f3411');
+    snoutG.addColorStop(0.34, '#4f1f0f');
+    snoutG.addColorStop(0.7, '#1a0d08');
+    snoutG.addColorStop(1, '#6b250c');
+    ctx.fillStyle = snoutG;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(70,10,0,0.45)';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+
+    // Snout bridge and nose ridge
+    ctx.strokeStyle = 'rgba(255,138,58,0.28)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(hx + 6, hy + 53);
+    ctx.quadraticCurveTo(hx - 18, hy + 47, hx - 58, hy + 58);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hx - 14, hy + 56);
+    ctx.quadraticCurveTo(hx - 32, hy + 51, hx - 50, hy + 58);
+    ctx.stroke();
+
     // Lower jaw
     ctx.beginPath();
-    ctx.moveTo(hx + 10, hy + 68);
-    ctx.bezierCurveTo(hx, hy + 76, hx - 16, hy + 84, hx - 32, hy + 86);
-    ctx.bezierCurveTo(hx - 52, hy + 88, hx - 66, hy + 84, hx - 68, hy + 78);
-    ctx.bezierCurveTo(hx - 68, hy + 70, hx - 62, hy + 66, hx - 50, hy + 64);
-    ctx.bezierCurveTo(hx - 34, hy + 62, hx - 14, hy + 62, hx + 6, hy + 64);
+    ctx.moveTo(hx + 8, hy + 67);
+    ctx.bezierCurveTo(hx + 1, hy + 79, hx - 18, hy + 92, hx - 40, hy + 95);
+    ctx.bezierCurveTo(hx - 64, hy + 97, hx - 80, hy + 91, hx - 82, hy + 82);
+    ctx.bezierCurveTo(hx - 79, hy + 72, hx - 67, hy + 67, hx - 52, hy + 65);
+    ctx.bezierCurveTo(hx - 31, hy + 63, hx - 8, hy + 62, hx + 8, hy + 64);
     ctx.closePath();
-    const jawG = ctx.createLinearGradient(hx - 68, hy + 68, hx + 10, hy + 86);
-    jawG.addColorStop(0, '#160d08'); jawG.addColorStop(1, '#53200f');
-    ctx.fillStyle = jawG; ctx.fill();
-    ctx.strokeStyle = 'rgba(55,8,0,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    const jawG = ctx.createLinearGradient(hx - 84, hy + 67, hx + 10, hy + 94);
+    jawG.addColorStop(0, '#2a120a');
+    jawG.addColorStop(0.45, '#120907');
+    jawG.addColorStop(1, '#6a2912');
+    ctx.fillStyle = jawG;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(70,10,0,0.38)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
     // Nostrils
-    ctx.fillStyle = '#550000';
-    ctx.beginPath(); ctx.ellipse(hx - 32, hy + 64, 6, 5, -0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(hx - 47, hy + 66, 6, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2b0200';
+    ctx.beginPath();
+    ctx.ellipse(hx - 34, hy + 62, 7, 5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx - 53, hy + 65, 7, 5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,170,110,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(hx - 37, hy + 60, 2.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx - 56, hy + 63, 2.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Dragon chin/jaw spikes
     ctx.fillStyle = '#252520';
@@ -1572,53 +1608,75 @@ function drawGigantamaxCharizard(ch) {
     if (ch.attackTimer > 0) {
         ctx.fillStyle = '#140000';
         ctx.beginPath();
-        ctx.moveTo(hx + 6, hy + 66);
-        ctx.bezierCurveTo(hx - 14, hy + 74, hx - 44, hy + 78, hx - 65, hy + 74);
-        ctx.bezierCurveTo(hx - 67, hy + 68, hx - 58, hy + 64, hx - 44, hy + 63);
-        ctx.bezierCurveTo(hx - 26, hy + 62, hx - 4, hy + 62, hx + 6, hy + 66);
+        ctx.moveTo(hx + 8, hy + 67);
+        ctx.bezierCurveTo(hx - 14, hy + 79, hx - 50, hy + 86, hx - 78, hy + 80);
+        ctx.bezierCurveTo(hx - 81, hy + 72, hx - 69, hy + 66, hx - 50, hy + 65);
+        ctx.bezierCurveTo(hx - 26, hy + 64, hx - 2, hy + 63, hx + 8, hy + 67);
         ctx.closePath(); ctx.fill();
         ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 22;
-        const mgG = ctx.createLinearGradient(hx - 68, hy + 64, hx + 8, hy + 76);
-        mgG.addColorStop(0, '#ffee44'); mgG.addColorStop(0.5, '#ff7700'); mgG.addColorStop(1, '#ff2200');
+        const mgG = ctx.createLinearGradient(hx - 82, hy + 64, hx + 8, hy + 82);
+        mgG.addColorStop(0, '#ffee66'); mgG.addColorStop(0.42, '#ff9b1f'); mgG.addColorStop(1, '#ff2200');
         ctx.fillStyle = mgG;
         ctx.beginPath();
-        ctx.moveTo(hx + 4, hy + 66);
-        ctx.bezierCurveTo(hx - 16, hy + 72, hx - 42, hy + 76, hx - 62, hy + 72);
-        ctx.bezierCurveTo(hx - 63, hy + 67, hx - 56, hy + 64, hx - 42, hy + 63);
-        ctx.bezierCurveTo(hx - 24, hy + 62, hx - 2, hy + 62, hx + 4, hy + 66);
+        ctx.moveTo(hx + 4, hy + 67);
+        ctx.bezierCurveTo(hx - 16, hy + 75, hx - 47, hy + 82, hx - 72, hy + 77);
+        ctx.bezierCurveTo(hx - 74, hy + 72, hx - 65, hy + 67, hx - 47, hy + 65);
+        ctx.bezierCurveTo(hx - 25, hy + 64, hx - 3, hy + 64, hx + 4, hy + 67);
         ctx.closePath(); ctx.fill();
         ctx.shadowBlur = 0;
+        ctx.fillStyle = '#8e1a09';
+        ctx.beginPath();
+        ctx.moveTo(hx - 10, hy + 73);
+        ctx.quadraticCurveTo(hx - 27, hy + 88, hx - 48, hy + 81);
+        ctx.quadraticCurveTo(hx - 30, hy + 72, hx - 10, hy + 73);
+        ctx.closePath();
+        ctx.fill();
         ctx.fillStyle = '#f5f0e0';
-        for (let f = 0; f < 4; f++) {
-            const fx = hx - 6 - f * 14, fy = hy + 66;
+        for (let f = 0; f < 5; f++) {
+            const fx = hx - 2 - f * 15, fy = hy + 66;
             ctx.beginPath();
             ctx.moveTo(fx, fy); ctx.bezierCurveTo(fx - 3, fy + 7, fx - 1, fy + 15, fx + 3, fy + 14);
             ctx.bezierCurveTo(fx + 7, fy + 13, fx + 7, fy + 5, fx + 5, fy);
             ctx.closePath(); ctx.fill();
+        }
+        for (let f = 0; f < 4; f++) {
+            const fx = hx - 12 - f * 14, fy = hy + 81;
+            ctx.beginPath();
+            ctx.moveTo(fx, fy);
+            ctx.bezierCurveTo(fx - 2, fy - 6, fx + 1, fy - 12, fx + 5, fy - 12);
+            ctx.bezierCurveTo(fx + 8, fy - 11, fx + 8, fy - 5, fx + 6, fy);
+            ctx.closePath();
+            ctx.fill();
         }
     } else {
         // Angry snarl — mouth slightly open, teeth showing
         ctx.fillStyle = '#0e0000';
         ctx.beginPath();
         ctx.moveTo(hx + 4, hy + 68);
-        ctx.bezierCurveTo(hx - 14, hy + 72, hx - 44, hy + 75, hx - 64, hy + 72);
-        ctx.bezierCurveTo(hx - 66, hy + 68, hx - 58, hy + 65, hx - 44, hy + 64);
-        ctx.bezierCurveTo(hx - 26, hy + 63, hx - 4, hy + 63, hx + 4, hy + 68);
+        ctx.bezierCurveTo(hx - 17, hy + 74, hx - 48, hy + 78, hx - 72, hy + 74);
+        ctx.bezierCurveTo(hx - 74, hy + 69, hx - 64, hy + 65, hx - 47, hy + 64);
+        ctx.bezierCurveTo(hx - 27, hy + 63, hx - 3, hy + 63, hx + 4, hy + 68);
         ctx.closePath(); ctx.fill();
         // Snarl teeth
         ctx.fillStyle = '#f0ece0';
-        for (let f = 0; f < 3; f++) {
-            const fx = hx - 6 - f * 16, fy = hy + 67;
+        for (let f = 0; f < 4; f++) {
+            const fx = hx - 3 - f * 16, fy = hy + 67;
             ctx.beginPath();
             ctx.moveTo(fx, fy); ctx.bezierCurveTo(fx - 2, fy + 5, fx - 1, fy + 10, fx + 3, fy + 10);
             ctx.bezierCurveTo(fx + 7, fy + 10, fx + 7, fy + 5, fx + 5, fy);
             ctx.closePath(); ctx.fill();
         }
+        ctx.beginPath();
+        ctx.moveTo(hx - 70, hy + 70);
+        ctx.bezierCurveTo(hx - 76, hy + 78, hx - 75, hy + 86, hx - 67, hy + 85);
+        ctx.bezierCurveTo(hx - 61, hy + 84, hx - 60, hy + 77, hx - 63, hy + 71);
+        ctx.closePath();
+        ctx.fill();
         // Lip line
-        ctx.strokeStyle = '#5e1000'; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#7a1b05'; ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.moveTo(hx + 4, hy + 68);
-        ctx.bezierCurveTo(hx - 22, hy + 70, hx - 48, hy + 71, hx - 64, hy + 68);
+        ctx.bezierCurveTo(hx - 24, hy + 71, hx - 54, hy + 72, hx - 72, hy + 68);
         ctx.stroke();
     }
 
@@ -2013,6 +2071,8 @@ function spawnHulk() {
         jumpTimer: 60 + Math.random() * 120,
         smashTimer: 0,
         smashCooldown: 0,
+        hp: 6,
+        invulnerableTimer: 120, // 2 seconds at 60fps
         lifespan: 600, // 10 seconds at 60fps
         facingLeft: true
     };
@@ -2295,12 +2355,16 @@ function playerIsUnderground() {
     return !inShip && player.underground;
 }
 
+function playerIsBurrowing() {
+    return !inShip && (player.underground || player.digDepth > 0.08 || keys.dig);
+}
+
 function checkPitCollision() {
     for (let pit of lavaPits) {
         if (player.x + player.width > pit.x &&
             player.x < pit.x + pit.width &&
-            player.y + player.height >= groundY &&
-            !playerIsUnderground()) {
+            player.y + player.height >= groundY - 6 &&
+            !playerIsBurrowing()) {
             return true;
         }
     }
@@ -2408,9 +2472,8 @@ function gameLoop(timestamp) {
     // Clear and draw background
     drawBackground();
 
-    // Update game speed
-    gameSpeed = 5 + Math.floor(score / 500) * 0.5;
-    if (gameSpeed > 12) gameSpeed = 12;
+    // Keep scroll speed fixed instead of ramping with score.
+    gameSpeed = 5;
 
     // Spawn obstacles
     if (timestamp - lastSpawnTime > 1500 - Math.min(score, 800)) {
@@ -2620,6 +2683,7 @@ function gameLoop(timestamp) {
         const hulk = hulks[i];
         hulk.frame++;
         hulk.lifespan--;
+        if (hulk.invulnerableTimer > 0) hulk.invulnerableTimer--;
 
         // Move toward player
         hulk.x += hulk.velocityX;
@@ -2654,8 +2718,9 @@ function gameLoop(timestamp) {
         if (hulk.smashCooldown > 0) hulk.smashCooldown--;
         if (hulk.smashTimer > 0) hulk.smashTimer--;
 
-        // Flashing when about to despawn (last 2 seconds)
-        if (hulk.lifespan < 120 && hulk.lifespan % 10 < 5) {
+        // Flash while spawn-invulnerable, then again before despawn.
+        if ((hulk.invulnerableTimer > 0 && hulk.frame % 8 < 4) ||
+            (hulk.lifespan < 120 && hulk.lifespan % 10 < 5)) {
             ctx.globalAlpha = 0.5;
         }
 
@@ -2669,6 +2734,11 @@ function gameLoop(timestamp) {
             ctx.fillStyle = '#ff4444';
             ctx.font = 'bold 12px Courier New';
             ctx.fillText(secsLeft + 's', hulk.x + 30, hulk.y - 5);
+        }
+        if (hulk.invulnerableTimer > 0) {
+            ctx.fillStyle = '#aee7ff';
+            ctx.font = 'bold 11px Courier New';
+            ctx.fillText('IMMUNE', hulk.x + 18, hulk.y - 18);
         }
 
         // Remove if lifespan expired or off screen
@@ -2966,7 +3036,7 @@ function gameLoop(timestamp) {
             onGround = true;
         }
 
-        const canBurrow = onGround && !onBlock;
+        const canBurrow = (onGround || overPit) && !onBlock;
         const forcedBurrow = player.digDepth > 0.08 && overPit;
         const wantsDig = (keys.dig && canBurrow) || forcedBurrow;
 
@@ -2999,7 +3069,7 @@ function gameLoop(timestamp) {
         // === LASER EYES LOGIC ===
         if (laserCooldown > 0) laserCooldown--;
 
-        if (keys.shoot && !keys.dig && laserCooldown === 0 && !playerIsUnderground()) {
+        if (keys.shoot && laserCooldown === 0 && !playerIsUnderground()) {
             const bobOffset = Math.sin(player.frame * 0.3) * 2;
             // Fire two lasers from each eye
             lasers.push({
@@ -3067,12 +3137,23 @@ function gameLoop(timestamp) {
         }
         if (i >= lasers.length) continue;
 
-        // Laser hits Hulks (knocks back but doesn't kill)
+        // Laser hits Hulks
         for (let j = hulks.length - 1; j >= 0; j--) {
             if (checkCollision(lasers[i], hulks[j])) {
                 hulks[j].x -= 8;
                 lasers.splice(i, 1);
-                score += 10;
+                if (hulks[j].invulnerableTimer <= 0) {
+                    hulks[j].hp--;
+                    score += 20;
+                    if (hulks[j].hp <= 0) {
+                        hulks.splice(j, 1);
+                        score += 250;
+                        screenShake = 14;
+                        screenShakeIntensity = 9;
+                    }
+                } else {
+                    score += 10;
+                }
                 break;
             }
         }
@@ -3145,12 +3226,23 @@ function gameLoop(timestamp) {
         }
         if (i >= shipLasers.length) continue;
 
-        // Ship laser hits Hulks (knocks back but doesn't kill)
+        // Ship laser hits Hulks
         for (let j = hulks.length - 1; j >= 0; j--) {
             if (checkCollision(shipLasers[i], hulks[j])) {
                 hulks[j].x -= 12;
                 shipLasers.splice(i, 1);
-                score += 15;
+                if (hulks[j].invulnerableTimer <= 0) {
+                    hulks[j].hp -= 2;
+                    score += 30;
+                    if (hulks[j].hp <= 0) {
+                        hulks.splice(j, 1);
+                        score += 300;
+                        screenShake = 18;
+                        screenShakeIntensity = 11;
+                    }
+                } else {
+                    score += 15;
+                }
                 break;
             }
         }
@@ -3194,7 +3286,7 @@ function gameLoop(timestamp) {
     skeleton.frame++;
 
     // Base catch-up speed
-    const catchUpSpeed = 0.008 + (score / 40000);
+    const catchUpSpeed = 0.008;
     skeleton.x += catchUpSpeed + skeleton.lungeSpeed;
 
     // Random lunging behavior
@@ -3471,7 +3563,7 @@ document.addEventListener('keydown', (e) => {
 
     if (e.code === 'Space') {
         e.preventDefault();
-        if (gameRunning && !inShip) keys.dig = true;
+        if (gameRunning) keys.shoot = true;
     }
 
     // Movement controls (arrows + WASD)
@@ -3479,7 +3571,11 @@ document.addEventListener('keydown', (e) => {
         keys.up = true;
         if (gameRunning && !inShip) jump();  // jump when on foot
     }
-    if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        e.preventDefault();
+        keys.down = true;
+        if (gameRunning && !inShip) keys.dig = true;
+    }
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
 
@@ -3488,9 +3584,6 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         keys.shift = true;
     }
-
-    // F also fires as alternative
-    if (e.code === 'KeyF') keys.shoot = true;
 
     // Enter/Exit ship with E
     if (e.code === 'KeyE' && gameRunning) {
@@ -3521,12 +3614,14 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
-    if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        keys.down = false;
+        keys.dig = false;
+    }
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
-    if (e.code === 'Space') keys.dig = false;
-    if (e.code === 'KeyF') keys.shoot = false;
+    if (e.code === 'Space') keys.shoot = false;
 });
 
 window.addEventListener('blur', resetInputState);
