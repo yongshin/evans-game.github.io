@@ -76,6 +76,12 @@ const keys = {
     dig: false
 };
 
+function resetInputState() {
+    for (const key of Object.keys(keys)) {
+        keys[key] = false;
+    }
+}
+
 // Music system
 let audioCtx = null;
 let musicPlaying = false;
@@ -1693,99 +1699,250 @@ function drawGigantamaxCharizard(ch) {
     ctx.restore();
 }
 
-// Draw Gyarados (serpentine, rises from ground) - smooth gradient version
+// Draw Gyarados with a broader maw, pale fins, and plated underbelly
 function drawGyarados(gyr) {
     const frame = gyr.frame;
     const hx = gyr.x;
     const hy = gyr.y;
+    const bodyWave = Math.sin(frame * 0.09) * 5;
 
-    // Serpentine body segments
-    for (let i = 1; i <= 10; i++) {
-        const segY = hy + 62 + i * 30;
-        if (segY > groundY + 50) break;
-        const sway = Math.sin(frame * 0.1 + i * 0.8) * Math.min(i * 3, 16);
-        const segW = Math.max(22, 52 - i * 2);
-        const segX = hx - segW / 2 + sway;
-        // Segment gradient
-        const sG = ctx.createLinearGradient(segX, segY, segX + segW, segY + 32);
-        sG.addColorStop(0, '#1a55cc'); sG.addColorStop(0.5, '#0d3399'); sG.addColorStop(1, '#091d66');
-        ctx.fillStyle = sG;
-        ctx.beginPath(); ctx.roundRect(segX, segY, segW, 32, 6); ctx.fill();
-        // Belly shimmer
-        ctx.fillStyle = 'rgba(180,200,255,0.22)';
-        ctx.beginPath(); ctx.ellipse(hx + sway, segY + 16, segW * 0.28, 10, 0, 0, Math.PI * 2); ctx.fill();
-        // Barbels on alternating segments
-        if (i % 2 === 1) {
-            ctx.strokeStyle = '#ffdd00'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(segX - 2, segY + 10); ctx.quadraticCurveTo(segX - 14, segY + 16, segX - 6, segY + 28); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(segX + segW + 2, segY + 10); ctx.quadraticCurveTo(segX + segW + 14, segY + 16, segX + segW + 6, segY + 28); ctx.stroke();
+    ctx.save();
+
+    for (let i = 0; i < 10; i++) {
+        const segY = hy + 72 + i * 28;
+        if (segY > groundY + 70) break;
+
+        const sway = Math.sin(frame * 0.11 + i * 0.72) * (10 + i * 0.9);
+        const segX = hx + sway + bodyWave * 0.35 - i * 0.4;
+        const segW = Math.max(28, 74 - i * 4.4);
+        const segH = Math.max(18, 34 - i * 1.1);
+        const rot = -0.08 + Math.sin(frame * 0.05 + i * 0.4) * 0.05;
+
+        ctx.save();
+        ctx.translate(segX, segY);
+        ctx.rotate(rot);
+
+        const bodyG = ctx.createLinearGradient(-segW * 0.55, -segH, segW * 0.55, segH);
+        bodyG.addColorStop(0, '#2f84ff');
+        bodyG.addColorStop(0.5, '#1656c7');
+        bodyG.addColorStop(1, '#0a2f82');
+        ctx.fillStyle = bodyG;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, segW * 0.52, segH, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f5d08c';
+        ctx.beginPath();
+        ctx.ellipse(-segW * 0.03, segH * 0.22, segW * 0.28, segH * 0.44, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.beginPath();
+        ctx.ellipse(-segW * 0.16, -segH * 0.18, segW * 0.18, segH * 0.2, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f4d24e';
+        ctx.beginPath();
+        ctx.ellipse(-segW * 0.34, 0, segW * 0.08, segH * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(segW * 0.34, 0, segW * 0.08, segH * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (i < 6) {
+            ctx.fillStyle = '#f4f4ee';
+            ctx.beginPath();
+            ctx.moveTo(-5, -segH * 0.58);
+            ctx.lineTo(2, -segH * 1.3);
+            ctx.lineTo(10, -segH * 0.56);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#9ea8c7';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(2, -segH * 1.18);
+            ctx.lineTo(2, -segH * 0.62);
+            ctx.stroke();
         }
+
+        ctx.restore();
     }
 
-    // Neck
-    const neckG = ctx.createLinearGradient(hx - 22, hy + 58, hx + 28, hy + 96);
-    neckG.addColorStop(0, '#1a55cc'); neckG.addColorStop(1, '#0d3399');
+    const neckG = ctx.createLinearGradient(hx - 42, hy + 48, hx + 30, hy + 118);
+    neckG.addColorStop(0, '#2c80f4');
+    neckG.addColorStop(0.55, '#1454bd');
+    neckG.addColorStop(1, '#0a2d7b');
     ctx.fillStyle = neckG;
-    ctx.beginPath(); ctx.roundRect(hx - 22, hy + 58, 50, 38, 8); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx - 28, hy + 106);
+    ctx.quadraticCurveTo(hx - 40, hy + 88, hx - 26, hy + 58);
+    ctx.quadraticCurveTo(hx - 5, hy + 30, hx + 25, hy + 44);
+    ctx.quadraticCurveTo(hx + 32, hy + 82, hx + 12, hy + 111);
+    ctx.closePath();
+    ctx.fill();
 
-    // Head
-    const headG = ctx.createRadialGradient(hx, hy + 30, 4, hx, hy + 35, 50);
-    headG.addColorStop(0, '#2266dd'); headG.addColorStop(0.5, '#1144aa');
-    headG.addColorStop(0.85, '#0a2d77'); headG.addColorStop(1, '#061850');
+    ctx.fillStyle = '#f5d08c';
+    ctx.beginPath();
+    ctx.moveTo(hx - 13, hy + 102);
+    ctx.quadraticCurveTo(hx - 19, hy + 70, hx - 4, hy + 50);
+    ctx.quadraticCurveTo(hx + 6, hy + 44, hx + 12, hy + 52);
+    ctx.quadraticCurveTo(hx + 12, hy + 83, hx + 4, hy + 104);
+    ctx.closePath();
+    ctx.fill();
+
+    const headG = ctx.createLinearGradient(hx - 86, hy - 2, hx + 38, hy + 78);
+    headG.addColorStop(0, '#2d88ff');
+    headG.addColorStop(0.45, '#165ed2');
+    headG.addColorStop(1, '#082d79');
     ctx.fillStyle = headG;
-    ctx.beginPath(); ctx.ellipse(hx, hy + 32, 46, 36, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx - 70, hy + 48);
+    ctx.quadraticCurveTo(hx - 98, hy + 27, hx - 84, hy + 7);
+    ctx.quadraticCurveTo(hx - 54, hy - 20, hx - 7, hy - 8);
+    ctx.quadraticCurveTo(hx + 36, hy + 3, hx + 42, hy + 31);
+    ctx.quadraticCurveTo(hx + 32, hy + 63, hx - 8, hy + 70);
+    ctx.quadraticCurveTo(hx - 49, hy + 76, hx - 70, hy + 48);
+    ctx.closePath();
+    ctx.fill();
 
-    // Snout
-    ctx.fillStyle = '#0d3399';
-    ctx.beginPath(); ctx.ellipse(hx - 52, hy + 34, 20, 14, -0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#103a95';
+    ctx.beginPath();
+    ctx.moveTo(hx - 86, hy + 34);
+    ctx.quadraticCurveTo(hx - 112, hy + 41, hx - 104, hy + 56);
+    ctx.quadraticCurveTo(hx - 84, hy + 68, hx - 51, hy + 59);
+    ctx.quadraticCurveTo(hx - 46, hy + 39, hx - 63, hy + 30);
+    ctx.closePath();
+    ctx.fill();
 
-    // Eyes
-    ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 12;
-    const eyeG = ctx.createRadialGradient(hx - 18, hy + 15, 0, hx - 18, hy + 15, 9);
-    eyeG.addColorStop(0, '#ff5500'); eyeG.addColorStop(0.5, '#cc2200'); eyeG.addColorStop(1, '#660000');
-    ctx.fillStyle = eyeG;
-    ctx.beginPath(); ctx.ellipse(hx - 18, hy + 15, 9, 8, 0, 0, Math.PI * 2); ctx.fill();
-    const eyeG2 = ctx.createRadialGradient(hx + 22, hy + 15, 0, hx + 22, hy + 15, 9);
-    eyeG2.addColorStop(0, '#ff5500'); eyeG2.addColorStop(0.5, '#cc2200'); eyeG2.addColorStop(1, '#660000');
-    ctx.fillStyle = eyeG2;
-    ctx.beginPath(); ctx.ellipse(hx + 22, hy + 15, 9, 8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#080000';
-    ctx.beginPath(); ctx.arc(hx - 17, hy + 15, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx + 23, hy + 15, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f2c36e';
+    ctx.beginPath();
+    ctx.moveTo(hx - 82, hy + 38);
+    ctx.quadraticCurveTo(hx - 61, hy + 55, hx - 28, hy + 58);
+    ctx.quadraticCurveTo(hx - 3, hy + 58, hx + 18, hy + 45);
+    ctx.quadraticCurveTo(hx + 13, hy + 59, hx - 15, hy + 67);
+    ctx.quadraticCurveTo(hx - 51, hy + 75, hx - 78, hy + 58);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#f8f8f2';
+    ctx.beginPath();
+    ctx.moveTo(hx - 10, hy - 4);
+    ctx.lineTo(hx - 1, hy - 58);
+    ctx.lineTo(hx + 9, hy - 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx + 10, hy + 3);
+    ctx.lineTo(hx + 24, hy - 44);
+    ctx.lineTo(hx + 30, hy + 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx + 28, hy + 14);
+    ctx.lineTo(hx + 43, hy - 20);
+    ctx.lineTo(hx + 46, hy + 18);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#f8f8f2';
+    ctx.beginPath();
+    ctx.moveTo(hx - 13, hy + 17);
+    ctx.lineTo(hx - 36, hy + 30);
+    ctx.lineTo(hx - 7, hy + 37);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx + 30, hy + 18);
+    ctx.lineTo(hx + 54, hy + 31);
+    ctx.lineTo(hx + 25, hy + 39);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowColor = '#ff5a3d';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#f6451f';
+    ctx.beginPath();
+    ctx.ellipse(hx - 16, hy + 20, 8, 10, -0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx + 18, hy + 18, 8, 10, 0.18, 0, Math.PI * 2);
+    ctx.fill();
     ctx.shadowBlur = 0;
+    ctx.fillStyle = '#120200';
+    ctx.beginPath();
+    ctx.ellipse(hx - 17, hy + 21, 3, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx + 19, hy + 19, 3, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Barbels (whiskers)
-    ctx.strokeStyle = '#ffdd00'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(hx - 46, hy + 38); ctx.quadraticCurveTo(hx - 80, hy + 42, hx - 86, hy + 55); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(hx - 46, hy + 45); ctx.quadraticCurveTo(hx - 78, hy + 52, hx - 82, hy + 65); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(hx + 46, hy + 38); ctx.quadraticCurveTo(hx + 80, hy + 42, hx + 86, hy + 55); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(hx + 46, hy + 45); ctx.quadraticCurveTo(hx + 78, hy + 52, hx + 82, hy + 65); ctx.stroke();
+    ctx.strokeStyle = '#f5d43d';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(hx - 60, hy + 40);
+    ctx.quadraticCurveTo(hx - 98, hy + 36 + bodyWave, hx - 115, hy + 58);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hx + 40, hy + 36);
+    ctx.quadraticCurveTo(hx + 78, hy + 33 - bodyWave, hx + 97, hy + 56);
+    ctx.stroke();
 
-    // Top crest
-    ctx.fillStyle = '#5599ff';
-    ctx.beginPath(); ctx.moveTo(hx - 16, hy + 5); ctx.lineTo(hx - 10, hy - 36); ctx.lineTo(hx - 2, hy + 5); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(hx + 2, hy + 5); ctx.lineTo(hx + 8, hy - 28); ctx.lineTo(hx + 16, hy + 5); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(hx + 18, hy + 8); ctx.lineTo(hx + 24, hy - 18); ctx.lineTo(hx + 30, hy + 8); ctx.closePath(); ctx.fill();
-
-    // Mouth / hyper beam charge
     if (gyr.phase === 'attacking') {
-        ctx.fillStyle = '#000022';
-        ctx.beginPath(); ctx.ellipse(hx - 50, hy + 42, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowColor = '#aaccff'; ctx.shadowBlur = 28;
-        const mG = ctx.createLinearGradient(hx - 74, hy + 36, hx - 26, hy + 48);
-        mG.addColorStop(0, '#ffffff'); mG.addColorStop(0.4, '#aaddff'); mG.addColorStop(1, '#5588ff');
-        ctx.fillStyle = mG;
-        ctx.fillRect(hx - 74, hy + 36, 50, 12);
+        ctx.fillStyle = '#16090d';
+        ctx.beginPath();
+        ctx.moveTo(hx - 92, hy + 41);
+        ctx.quadraticCurveTo(hx - 70, hy + 53, hx - 31, hy + 47);
+        ctx.quadraticCurveTo(hx - 72, hy + 70, hx - 98, hy + 55);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#efe7c8';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 4; i++) {
+            const toothX = hx - 82 + i * 13;
+            ctx.beginPath();
+            ctx.moveTo(toothX, hy + 43);
+            ctx.lineTo(toothX + 4, hy + 51);
+            ctx.stroke();
+        }
+        for (let i = 0; i < 3; i++) {
+            const toothX = hx - 78 + i * 14;
+            ctx.beginPath();
+            ctx.moveTo(toothX, hy + 57);
+            ctx.lineTo(toothX + 4, hy + 50);
+            ctx.stroke();
+        }
+
+        ctx.shadowColor = '#d7f1ff';
+        ctx.shadowBlur = 30;
+        const beamCharge = ctx.createLinearGradient(hx - 96, hy + 38, hx - 24, hy + 52);
+        beamCharge.addColorStop(0, '#ffffff');
+        beamCharge.addColorStop(0.45, '#b6e6ff');
+        beamCharge.addColorStop(1, '#6d9fff');
+        ctx.fillStyle = beamCharge;
+        ctx.beginPath();
+        ctx.ellipse(hx - 63, hy + 47, 30, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#aaccff';
+
+        ctx.fillStyle = '#d6e7ff';
         ctx.font = 'bold 15px Courier New';
-        ctx.shadowColor = '#0044ff'; ctx.shadowBlur = 10;
-        ctx.fillText('HYPER BEAM!', hx - 60, hy - 46);
+        ctx.shadowColor = '#3d6fff';
+        ctx.shadowBlur = 10;
+        ctx.fillText('HYPER BEAM!', hx - 63, hy - 48);
         ctx.shadowBlur = 0;
     } else {
-        ctx.fillStyle = '#061433';
-        ctx.beginPath(); ctx.ellipse(hx - 50, hy + 44, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#17090d';
+        ctx.beginPath();
+        ctx.moveTo(hx - 89, hy + 42);
+        ctx.quadraticCurveTo(hx - 69, hy + 49, hx - 42, hy + 46);
+        ctx.quadraticCurveTo(hx - 68, hy + 57, hx - 90, hy + 50);
+        ctx.closePath();
+        ctx.fill();
     }
+
+    ctx.restore();
 }
 
 // Draw hyper beam (wide horizontal laser)
@@ -2842,7 +2999,7 @@ function gameLoop(timestamp) {
         // === LASER EYES LOGIC ===
         if (laserCooldown > 0) laserCooldown--;
 
-        if (keys.shoot && laserCooldown === 0 && !playerIsUnderground()) {
+        if (keys.shoot && !keys.dig && laserCooldown === 0 && !playerIsUnderground()) {
             const bobOffset = Math.sin(player.frame * 0.3) * 2;
             // Fire two lasers from each eye
             lasers.push({
@@ -3214,6 +3371,7 @@ function gameLoop(timestamp) {
 
 function startGame() {
     gameRunning = true;
+    resetInputState();
     score = 0;
     coins = 0;
     gameSpeed = 5;
@@ -3285,6 +3443,7 @@ function startGame() {
 
 function endGame() {
     gameRunning = false;
+    resetInputState();
     inShip = false;
     document.getElementById('fuelDisplay').style.display = 'none';
 
@@ -3368,6 +3527,11 @@ document.addEventListener('keyup', (e) => {
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
     if (e.code === 'Space') keys.dig = false;
     if (e.code === 'KeyF') keys.shoot = false;
+});
+
+window.addEventListener('blur', resetInputState);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) resetInputState();
 });
 
 canvas.addEventListener('click', () => {
